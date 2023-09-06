@@ -19,13 +19,58 @@ output:
 
 
 
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Load packages we'll need throughout the entire document
+library(readxl)
+library(data.table)
+library(DT)
+library(sf)
+library(mapview)
+library(dplyr)
+library(scales)
+library(tidycensus)
+library(tidyverse)
+options(tigris_use_cache = TRUE)
+library(nngeo)
+library(leaflet)
+library(janitor)
+library(DT)
+library(kableExtra)
+library(ggmap)
+source('helper_functions.R')
+library(RColorBrewer)
 
+library(tidyr)
+options(scipen = 100)
 
-
+```
 
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
+
+state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA")
+
+hifld_df <- st_read("utility_zones/HIFLD/Electric_Retail_Service_Territories (1)/Electric_Retail_Service_Territories.shp") 
+
+temp_util <- hifld_df %>%
+  filter(ID %in% c(15473, 10817, 5701)) %>%
+  mutate(new_name = case_when(
+    ID == 15473 ~ "Public Service Company",
+    ID == 10817 ~ "Xcel",
+    ID == 5701 ~ "El Paso Electric"
+  ))
+census_api_key('ba3d95cae3658f3145daf7f66119ed58a52aaca3')
+
+get_tracts <- get_acs(
+  geography="tract", 
+  state=state_list,
+  variables=c("Median Income" = "S1901_C01_012E"),
+  year=2017, 
+  geometry=TRUE) %>%
+  mutate(MedInc = estimate) %>%
+  select(geoid=GEOID, geometry)
+
 chas_df <- load_chas() %>%
     mutate(State_Name = case_when(
     state == 17 ~ "Illinois",
@@ -34,9 +79,28 @@ chas_df <- load_chas() %>%
     state == 34 ~ "New Jersey",
     state == 35 ~ "New Mexico",  
     state == 36 ~ "New York",
-    state == 06 ~ "California",
+    state == 6 ~ "California",
     TRUE ~ "Other"
   ))
+
+
+
+add_geo <- merge(chas_df, get_tracts) 
+
+add_geo <- st_as_sf(add_geo)
+# 
+# ny_geo <- add_geo %>%
+#   filter(State_Name=="New York")
+
+
+
+```
+
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
 
 
 
@@ -263,6 +327,30 @@ datatable(temp_table, caption = "California Geoqualified Population by Utiliy Zo
 
 
 
+```{r}
+ca_tracts <- get_acs(
+  geography="tract", 
+  state="CA",
+  variables=c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002"
+              
+              ),
+  year=2019, 
+  geometry=TRUE) %>%
+  group_by(GEOID) %>%
+  summarize(total_pop = estimate[variable=="Total_Pop"],
+            snap_hh = estimate[variable=="snap_hh"],
+            snap_pop = estimate[variable=="snap_pop"])
+
+
+
+
+
+
+
+total_ca_tracts <- cbind(add_geo, ca_tracts)
+
+```
+
 
 ### LIFT Solar
 
@@ -271,6 +359,14 @@ datatable(temp_table, caption = "California Geoqualified Population by Utiliy Zo
 
 
 ```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE}
+
+lift_df <- read.csv("data/groundswell_lift/cs-projects-2023-08-18.csv") 
+
+lift_df <- separate(lift_df, GeoCode, into = c("long", "lat"), sep = ",")
+
+lift_df <- st_as_sf(lift_df, coords = c("long", "lat"), crs = st_crs(get_tracts))
+
+
 
 temp_df <- add_geo %>%
   filter(State_Name == "California") 
@@ -304,15 +400,11 @@ pal2 <- colorNumeric(
 pal3 <- colorNumeric(
   palette = "viridis",
  # reverse=TRUE,
-  domain = total_ny_tracts$snap_hh)
+  domain = total_ca_tracts$snap_hh)
 
 library(tidyr)
 
 
-
-temp_lift <- lift_df %>%
-  filter(State=="New York")
- 
 
 
 
@@ -364,20 +456,20 @@ map <- leaflet() %>%
   # ) %>%
   
   addPolygons(
-    data=total_ny_tracts,
+    data=total_ca_tracts,
     group="SNAP",
     stroke=FALSE,
     smoothFactor=0.2,
     fillOpacity=0.7,
     color=~pal3(snap_hh),
-    popup=paste("Tract: ", total_ny_tracts$GEOID, "<br>",
-                "Number of HHs Receiving SNAP: ", total_ny_tracts$snap_hh)
+    popup=paste("Tract: ", total_ca_tracts$GEOID, "<br>",
+                "Number of HHs Receiving SNAP: ", total_ca_tracts$snap_hh)
   ) %>%
 
   addLegend("bottomleft",
             group="SNAP",
             pal = pal3,
-            values = total_ny_tracts$snap_hh,
+            values = total_ca_tracts$snap_hh,
             title="Number of HHs Receiving SNAP:"
   ) %>%
   
