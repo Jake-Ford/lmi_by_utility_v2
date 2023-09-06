@@ -63,17 +63,6 @@ get_tracts <- get_acs(
 
 
 
-# test
-
-some other stuff 
-
-# test
-
-some stuff 
-
-## test tes
-(summarized 8/30/2023)
-
 
 
 * Gross annual income, by family size, is at or below 200% of the Federal Poverty Guidelines, or 60% of the state median household income published by the United States Census Bureau, whichever is greater.

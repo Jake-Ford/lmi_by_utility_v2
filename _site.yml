@@ -1,20 +1,21 @@
-name: " "
-title: "Posts"
-description: |
- LMI Scoping Analysis
+name: "lmi_by_utility"
 output_dir: "docs"
 navbar:
+  title: "LMI by Utility"
   right:
     - text: "Home"
       href: index.html
-    - text: "New Mexico"
-      href: New-Mexico.html
-    - text: "New York"
-      href: New-York.html
-    - text: "California"
-      href: california.html
-    - text: "Illinois"
-      href: illinois.html
-    - text: "New Jersey"
-      href: new_jersey.html
-output: distill::distill_article
+    - text: "States"
+      menu:
+        - text: "New Mexico"
+          href: New-Mexico.html
+        - text: "New York"
+          href: New-York.html
+        - text: "California"
+          href: California.html
+        - text: "Illinois"
+          href: Illinois.html
+        - text: "New Jersey"
+          href: New-Jersey.html
+        - text: "Delaware"
+          href: Delaware.html

@@ -1,0 +1,32 @@
+---
+title: "Western"
+output: 
+  rmdformats::downcute:
+    toc_depth: 3
+---
+
+# Overview 
+Some intro 
+## Geoqualification
+
+There are three main methods to geoqualify households in California:
+
+
+  * Underserved community - low-income community under Health and Safety Code Sec. 39713
+  * CalEnviroScreen disadvantaged community top quartile (ClscoreP)
+  * California Native American tribe Public Resources Code Sec. 21073
+
+The [California Energy Commission](https://cecgis-caenergy.opendata.arcgis.com/datasets/CAEnergy::low-income-or-disadvantaged-communities-designated-by-california/explore?location=37.177590%2C-119.274072%2C7.63) publishes the state specific low-income or disadvantaged communities. Census tracts with median household incomes at or below 80 percent of the statewide median income or with median household incomes at or below the threshold designated as low income by the Department of Housing and Community Development’s list of state income limits adopted under Healthy and Safety Code section 50093 and/or Census tracts receiving the highest 25 percent of overall scores in CalEnviroScreen 4.0 or Census tracts lacking overall scores in CalEnviroScreen 4.0 due to data gaps, but receiving the highest 5 percent of CalEnviroScreen 4.0 cumulative population burden scores or Census tracts identified in the 2017 DAC designation as disadvantaged, regardless of their scores in CalEnviroScreen 4.0 or Lands under the control of federally recognized Tribes. 
+
+
+## California Maps {.tabset}
+
+
+### IOU-POU
+
+California electric utility zones are shown below, broken out by IOU and POU status. 
+
+
+### IOU-POUv2
+
+## now its done
