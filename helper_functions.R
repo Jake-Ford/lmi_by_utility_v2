@@ -16,7 +16,7 @@ load_chas <- function()
   
   # return(chas_df)
   chas_df <- chas_df %>%
-    filter(st %in% c(17,35,25,34,36,27, 6)) %>%
+    filter(st %in% c(17,35,25,34,36,27, 6, 10)) %>%
     mutate(geoid = gsub("14000US", "", geoid)) %>%
     
     

@@ -1,0 +1,93 @@
+---
+title: "Delaware"
+output: 
+  rmdformats::downcute:
+    toc_depth: 3
+---
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Load packages we'll need throughout the entire document
+library(readxl)
+library(data.table)
+library(DT)
+library(sf)
+library(mapview)
+library(dplyr)
+library(scales)
+library(tidycensus)
+library(tidyverse)
+options(tigris_use_cache = TRUE)
+library(nngeo)
+library(leaflet)
+library(janitor)
+library(DT)
+library(kableExtra)
+library(ggmap)
+source('helper_functions.R')
+library(RColorBrewer)
+
+library(tidyr)
+options(scipen = 100)
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA")
+
+hifld_df <- st_read("utility_zones/HIFLD/Electric_Retail_Service_Territories (1)/Electric_Retail_Service_Territories.shp") 
+
+temp_util <- hifld_df %>%
+  filter(ID %in% c(15473, 10817, 5701)) %>%
+  mutate(new_name = case_when(
+    ID == 15473 ~ "Public Service Company",
+    ID == 10817 ~ "Xcel",
+    ID == 5701 ~ "El Paso Electric"
+  ))
+census_api_key('ba3d95cae3658f3145daf7f66119ed58a52aaca3')
+
+get_tracts <- get_acs(
+  geography="tract", 
+  state=state_list,
+  variables=c("Median Income" = "S1901_C01_012E"),
+  year=2017, 
+  geometry=TRUE) %>%
+  mutate(MedInc = estimate) %>%
+  select(geoid=GEOID, geometry)
+
+
+```
+
+
+
+# test
+
+some other stuff 
+
+# test
+
+some stuff 
+
+## test tes
+(summarized 8/30/2023)
+
+
+
+* Gross annual income, by family size, is at or below 200% of the Federal Poverty Guidelines, or 60% of the state median household income published by the United States Census Bureau, whichever is greater.
+
+
+(from SB 2)
+
+
+* Low-income Customer verification (*includes self-attestation*):
+  * The CEF shall require income data verification to determine eligibility for Low-income Customers. Proof of eligibility required for Low-income Customers shall include:
+    * (1) Proof of income of the account holder (e.g., pay stub or W2)
+    * (2) proof of participation in a low income discount program including Medicaid, SSI, TANF, GA, WIC, LIHEAP, SNAP or food stamps
+    * (3) proof that the Low-income Customer lives in a census block where the median household income is at or below 200% of the U.S. Federal Poverty Guidelines or 60% of the state median household income published by the United States Census Bureau, whichever is greater
+    * (4) by living in a low-income master-metered building
+    * (5) A written attestation by the Low-income Customer that their total household income is at or below 200% of the Federal Poverty Guidelines, or 60% of the state median household income published by the United States Census bureau, whichever is greater
+    * NOTE For owners or operators of master-metered buildings, a written attestation that their tenants meet the income eligibility requirements for Low-income Customers
+
