@@ -1,0 +1,430 @@
+---
+title: "California"
+output: 
+  rmdformats::downcute:
+    toc_depth: 3
+---
+
+
+# California
+
+**to-do** 
+
+1. add the CCA terriorties + penetration 
+2. add CS saturation layer - how much current CS is in the market currently? 
+3. add in the EIA number of households 
+
+
+
+
+
+
+
+
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+chas_df <- load_chas() %>%
+    mutate(State_Name = case_when(
+    state == 17 ~ "Illinois",
+    state == 25 ~ "Massachusetts",  
+    state == 27 ~ "Minnesota",  
+    state == 34 ~ "New Jersey",
+    state == 35 ~ "New Mexico",  
+    state == 36 ~ "New York",
+    state == 06 ~ "California",
+    TRUE ~ "Other"
+  ))
+
+
+
+add_geo <- merge(chas_df, get_tracts) 
+
+add_geo <- st_as_sf(add_geo)
+
+add_geo <- add_geo %>%
+  filter(State_Name=="California")
+
+ca_tracts <- get_acs(
+  geography="tract", 
+  state="CA",
+  variables=c("Total_Pop" = "B01001_001"),
+  year=2019, 
+  geometry=TRUE) 
+
+ca_tracts$Tract <- as.double(ca_tracts$GEOID)
+
+# utility download
+
+temp_util <- st_read("data/CA/utils/Electric_Load_Serving_Entities_(IOU_%26_POU).shp")
+temp_util <- st_transform(temp_util, crs = st_crs(ca_tracts))
+temp_util <- st_zm(temp_util, drop = TRUE)
+
+
+
+
+# CalEnviroScreen Data Download
+
+
+
+#%>%
+ # filter(CIscoreP >= 75) %>%
+ # st_drop_geometry()
+
+
+
+
+temp <- temp_util %>%
+  select(OBJECTID, geometry)
+
+env_df <- st_read("/Users/jacobford/Downloads/calenviroscreen40shpf2021shp/CES4 Final Shapefile.shp") 
+
+env_df <- st_transform(env_df, crs = st_crs(ca_tracts))
+
+
+ca_geo_qual <- st_read("data/CA/Low-income_or_Disadvantaged_Communities_Designated_by_California/Low-income_or_Disadvantaged_Communities_Designated_by_California.shp")
+
+ca_geo_qual <- st_transform(ca_geo_qual, crs = st_crs(ca_tracts))
+
+```
+
+## Geoqualification
+
+There are three main methods to geoqualify households in California:
+
+
+  * Underserved community - low-income community under Health and Safety Code Sec. 39713
+  * CalEnviroScreen disadvantaged community top quartile (ClscoreP)
+  * California Native American tribe Public Resources Code Sec. 21073
+
+The [California Energy Commission](https://cecgis-caenergy.opendata.arcgis.com/datasets/CAEnergy::low-income-or-disadvantaged-communities-designated-by-california/explore?location=37.177590%2C-119.274072%2C7.63) publishes the state specific low-income or disadvantaged communities. Census tracts with median household incomes at or below 80 percent of the statewide median income or with median household incomes at or below the threshold designated as low income by the Department of Housing and Community Development’s list of state income limits adopted under Healthy and Safety Code section 50093 and/or Census tracts receiving the highest 25 percent of overall scores in CalEnviroScreen 4.0 or Census tracts lacking overall scores in CalEnviroScreen 4.0 due to data gaps, but receiving the highest 5 percent of CalEnviroScreen 4.0 cumulative population burden scores or Census tracts identified in the 2017 DAC designation as disadvantaged, regardless of their scores in CalEnviroScreen 4.0 or Lands under the control of federally recognized Tribes. 
+
+
+## California Maps {.tabset}
+
+
+### IOU-POU
+
+California electric utility zones are shown below, broken out by IOU and POU status. 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+pal5 <- colorFactor(
+  palette="viridis",
+  domain=temp_util$Type
+)
+# Create the leaflet map
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = temp_util,
+              group = "Utility Zones",
+              stroke = FALSE,
+              color = ~pal5(temp_util$Type),
+              dashArray = "3",
+              fillOpacity = 0.5,
+              popup = paste("Utility Zone: ", temp_util$Acronym, "<br>",
+                            "Utility Name: ", temp_util$Utility)) %>%
+
+
+  addLegend(position = "bottomright",
+            pal = pal5,
+            group = "Utility Zones",
+            values = temp_util$Type,
+            title = "California Utilities") 
+```
+
+
+### Utilities
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+pal5 <- colorFactor(
+  palette="viridis",
+  domain=temp_util$Acronym
+)
+# Create the leaflet map
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = temp_util,
+              group = "Utility Zones",
+              stroke = FALSE,
+              color = ~pal5(temp_util$Acronym),
+              dashArray = "3",
+              fillOpacity = 0.5,
+              popup = paste("Utility Zone: ", temp_util$Acronym, "<br>",
+                            "Utility Name: ", temp_util$Utility)) %>%
+
+
+  addLegend(position = "bottomright",
+            pal = pal5,
+            group = "Utility Zones",
+            values = temp_util$Acronym,
+            title = "California Utilities") 
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+temp <- ca_tracts %>%
+  st_drop_geometry()
+
+
+
+temp <- merge(temp, ca_geo_qual, by = c("GEOID"))
+
+temp <- st_as_sf(temp)
+
+temp$Population <- temp$estimate
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+temp_table <- temp %>% 
+  st_drop_geometry() %>%
+  mutate(var = 1) %>%
+  group_by(var) %>%
+  summarize(Population = sum(Population)) %>%
+  select(`Population Geoqualified` = Population ) %>%
+  mutate(`Population Total` = sum(ca_tracts$estimate))
+
+
+datatable(temp_table, caption = "California Geoqualified Population") %>%
+    formatCurrency('Population Geoqualified',currency = "", interval = 3, mark = ",") %>%
+    formatCurrency('Population Total',currency = "", interval = 3, mark = ",")
+
+
+```
+
+
+
+We'll quantify how many people are within these geoqualified zone, then break it down by utility zone. 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+tot_ca_pop <- sum(ca_tracts$estimate)
+
+iou_utils <- temp_util %>%
+  filter(Type=="IOU") %>%
+  st_make_valid()
+
+
+temp_table <- temp %>%
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(iou_utils %>% select(Utility=Acronym)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(Population = sum(Population)) %>%
+  mutate(Percentage = Population/tot_ca_pop) %>%
+  adorn_totals("row")
+
+# 
+# temp <- ca_tracts %>% 
+#   st_point_on_surface() %>%
+#   st_make_valid() %>%
+#   st_join(ca_geo_qual %>% select(GEOID)) %>%
+#   st_drop_geometry() %>%
+#   filter(!is.na(GEOID.y)) %>%
+#   mutate(var = 1) %>%
+#   group_by(var) %>%
+# 
+#   summarize(Population = sum(estimate)
+#             ) %>%
+#   arrange(desc(Population)) %>%
+#   adorn_totals("row") %>%
+#   mutate(Percentage = Population / tot_ca_pop )
+
+  
+
+datatable(temp_table, caption = "California Geoqualified Population by Utiliy Zone")%>%
+  formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
+  formatPercentage('Percentage', digits = 2)
+
+
+
+
+
+```
+
+## LMI Qualifications
+
+  * CARE Program
+  * FERA Program
+  * CalFresh Program
+  * SNAP
+
+
+
+
+### LIFT Solar
+
+
+
+
+
+```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE}
+
+temp_df <- add_geo %>%
+  filter(State_Name == "California") 
+
+temp_lift <- lift_df %>%
+  filter(State == "California")
+
+
+pal_potLMI <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = temp_lift$Potential...LMI.Subscribers)
+
+pal_cap <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = temp_lift$Project.Capacity.KW.AC)
+
+
+
+pal <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = temp_df$AMI_80)
+
+pal2 <- colorNumeric(
+  palette = "Purples",
+ # reverse=TRUE,
+  domain = temp_df$AMI_80_Pct)
+
+pal3 <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = total_ny_tracts$snap_hh)
+
+library(tidyr)
+
+
+
+temp_lift <- lift_df %>%
+  filter(State=="New York")
+ 
+
+
+
+map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility Zone: ", temp_util$comp_short)
+  ) %>%
+  
+  addPolygons(
+    data = temp_df,
+    group="80% AMI",  # This should be consistent with the group name in the addLegend function
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal(AMI_80),
+    popup=paste("Tract: ", temp_df$geoid, "<br>", 
+                "HHs at 80% AMI: ", temp_df$AMI_80)
+  ) %>%
+
+  addLegend("bottomleft",
+            group="80% AMI",  # This should be consistent with the group name in the addPolygons function
+            pal = pal,
+            values = temp_df$AMI_80,
+            title="Number of HHs at 80% AMI"
+  ) %>%
+  
+  # addPolygons(
+  #   data=nm_df,
+  #   group="80% AMI Percent",  # This should be consistent with the group name in the addLegend function
+  #   stroke=FALSE,
+  #   smoothFactor=0.2,
+  #   fillOpacity=0.7,
+  #   color=~pal2(AMI_80_Pct),
+  #   popup=paste("Tract: ", nm_df$geoid, "<br>", 
+  #               "Percent of HHs at 80% AMI: ", nm_df$AMI_80_Pct)
+  # ) %>%
+  # 
+  # addLegend("bottomleft",
+  #           group="80% AMI Percent",  # This should be consistent with the group name in the addPolygons function
+  #           pal = pal2,
+  #           values = nm_df$AMI_80_Pct,
+  #           title="Percent of HHs at 80% AMI"
+  # ) %>%
+  
+  addPolygons(
+    data=total_ny_tracts,
+    group="SNAP",
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.7,
+    color=~pal3(snap_hh),
+    popup=paste("Tract: ", total_ny_tracts$GEOID, "<br>",
+                "Number of HHs Receiving SNAP: ", total_ny_tracts$snap_hh)
+  ) %>%
+
+  addLegend("bottomleft",
+            group="SNAP",
+            pal = pal3,
+            values = total_ny_tracts$snap_hh,
+            title="Number of HHs Receiving SNAP:"
+  ) %>%
+  
+    addCircleMarkers(data = temp_lift,
+                   group="Potential LMI Subscribers",
+                   popup = ~paste("Program Name: ", Program.Name, "<br>",
+                                  "Developer/Owner: ", Project.Developer.or.Owner, "<br>", 
+                                  "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
+                                  "LMI Savings: ", LMI.Customer.Savings.., "<br>",
+                                  "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
+                   radius = temp_lift$Potential...LMI.Subscribers/15, 
+                   color = ~pal_potLMI(Potential...LMI.Subscribers)) %>%
+  addLegend("bottomright",
+            group="Potential LMI Subscribers",  # This should be consistent with the group name in the addPolygons function
+            pal = pal_potLMI,
+            values = temp_lift$Potential...LMI.Subscribers,
+            title="Potential LMI Subscribers") %>%
+
+    ## Project Capacity ## 
+  
+  addCircleMarkers(data = temp_lift,
+                   group="Project Capacity",
+                   popup = ~paste("Program Name: ", Program.Name, "<br>",
+                                  "Developer/Owner: ", Project.Developer.or.Owner, "<br>", 
+                                  "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
+                                  "LMI Savings: ", LMI.Customer.Savings.., "<br>",
+                                  "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
+                   radius = temp_lift$Project.Capacity.KW.AC/100, 
+                   color = ~pal_cap(Project.Capacity.KW.AC)) %>%
+  addLegend("topleft",
+             group="Project Capacity",  # This should be consistent with the group name in the addPolygons function
+            pal = pal_cap,
+            values = temp_lift$Project.Capacity.KW.AC,
+            title="Project Capacity") %>%
+
+
+  addLayersControl(
+    overlayGroups=c( "80% AMI", "Utility Zones", "SNAP","Potential LMI Subscribers", "Project Capacity"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+map %>%
+ hideGroup("SNAP") %>% hideGroup("80% AMI") %>% hideGroup("Project Capacity")
+
+```
+
+
+
+
+

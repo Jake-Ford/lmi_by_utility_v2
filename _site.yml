@@ -8,7 +8,9 @@ navbar:
     - text: "Home"
       href: index.html
     - text: "New Mexico"
-      href: new_mexico.html
+      href: New-Mexico.html
+    - text: "New York"
+      href: New-York.html
     - text: "California"
       href: california.html
     - text: "Illinois"

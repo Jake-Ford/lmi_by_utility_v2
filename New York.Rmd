@@ -1,0 +1,565 @@
+---
+title: "New York"
+output: 
+  rmdformats::downcute:
+    toc_depth: 3
+---
+
+
+
+# New York (VDER ICSA)
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Load packages we'll need throughout the entire document
+library(readxl)
+library(data.table)
+library(DT)
+library(sf)
+library(mapview)
+library(dplyr)
+library(scales)
+library(tidycensus)
+library(tidyverse)
+options(tigris_use_cache = TRUE)
+library(nngeo)
+library(leaflet)
+library(janitor)
+library(DT)
+library(kableExtra)
+library(ggmap)
+source('helper_functions.R')
+library(RColorBrewer)
+
+library(tidyr)
+options(scipen = 100)
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA")
+
+hifld_df <- st_read("utility_zones/HIFLD/Electric_Retail_Service_Territories (1)/Electric_Retail_Service_Territories.shp") 
+
+temp_util <- hifld_df %>%
+  filter(ID %in% c(15473, 10817, 5701)) %>%
+  mutate(new_name = case_when(
+    ID == 15473 ~ "Public Service Company",
+    ID == 10817 ~ "Xcel",
+    ID == 5701 ~ "El Paso Electric"
+  ))
+census_api_key('ba3d95cae3658f3145daf7f66119ed58a52aaca3')
+
+get_tracts <- get_acs(
+  geography="tract", 
+  state=state_list,
+  variables=c("Median Income" = "S1901_C01_012E"),
+  year=2017, 
+  geometry=TRUE) %>%
+  mutate(MedInc = estimate) %>%
+  select(geoid=GEOID, geometry)
+
+chas_df <- load_chas() %>%
+    mutate(State_Name = case_when(
+    state == 17 ~ "Illinois",
+    state == 25 ~ "Massachusetts",  
+    state == 27 ~ "Minnesota",  
+    state == 34 ~ "New Jersey",
+    state == 35 ~ "New Mexico",  
+    state == 36 ~ "New York",
+    state == 06 ~ "California",
+    TRUE ~ "Other"
+  ))
+
+
+
+add_geo <- merge(chas_df, get_tracts) 
+
+add_geo <- st_as_sf(add_geo)
+
+ny_geo <- add_geo %>%
+  filter(State_Name=="New York")
+
+temp_util <- st_transform(temp_util, st_crs(ny_geo)) %>%
+  st_make_valid()
+
+
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+#  * NYSERDA [Supported Solar Projects](https://www.nyserda.ny.gov/All-Programs/NY-Sun/Solar-Data-Maps/NYSERDA-Supported-Solar-Projects)
+
+
+
+
+
+ny_geo <- add_geo %>%
+  filter(State_Name=="New York")
+
+temp_util <- st_read("data/NY/ny_utils.shp") %>%
+  filter(grepl("NGRID|NYSEG|CHGE|RGE|ORU", comp_short))
+
+
+dac_bgs <- st_read("data/NY/Interim Disadvantaged Communities (DAC)_ 2020/geo_export_ae5e9c30-45bc-4888-87dd-681a41d761d8.shp")
+
+lift_df <- read.csv("data/groundswell_lift/cs-projects-2023-08-18.csv") 
+
+lift_df <- separate(lift_df, GeoCode, into = c("long", "lat"), sep = ",")
+
+lift_df <- st_as_sf(lift_df, coords = c("long", "lat"), crs = st_crs(ny_geo))
+
+
+ny_tracts <- get_acs(
+  geography="tract", 
+  state="NY",
+  variables=c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002"
+              
+              ),
+  year=2019, 
+  geometry=TRUE) %>%
+  group_by(GEOID) %>%
+  summarize(total_pop = estimate[variable=="Total_Pop"],
+            snap_hh = estimate[variable=="snap_hh"],
+            snap_pop = estimate[variable=="snap_pop"])
+
+
+
+
+# ny_bgs <- get_acs(
+#   geography="block group", 
+#   state="NY",
+#   variables=c("Total_Pop" = "B01001_001"),
+#   year=2019, 
+#   geometry=TRUE) 
+# 
+# lmi_data <- read_excel("data/NY/ny-lowmod-blockgroup.xls")
+
+
+
+
+total_ny_tracts <- cbind(ny_geo, ny_tracts)
+
+
+
+```
+
+
+
+
+
+## Geoqualification
+
+Residence in a DAC or EmPower pre-screened area. 
+
+  * [Pre-screened areas](https://www.nyserda.ny.gov/ny/ahp-empower/geo-eligible-income-tool)
+  * DAC interim [disadvantaged areas](https://data.ny.gov/Energy-Environment/Interim-Disadvantaged-Communities-DAC-2020/t6wd-tdrv)
+
+
+We consider the following five utility zones in New York:
+
+  * National Grid
+  * NYSEG
+  * Central Hudson
+  * Rochester Gas & Electric
+  * Orange & Rockland
+
+
+### Pre-screened areas
+
+**to-do**: note, recreating eligible block groups is not available. 
+
+
+### DAC BGs
+
+4,145 census block groups are tagged as disadvantaged communities defined by New York State. 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+temp_util <- st_zm(temp_util, drop = TRUE)
+
+
+pal5 <- colorFactor(
+  palette="viridis",
+  domain=temp_util$comp_full
+)
+# Create the leaflet map
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = temp_util,
+              group = "Utility Zones",
+              stroke = TRUE,
+              color = ~pal5(temp_util$comp_full),
+              dashArray = "3",
+              fillOpacity = 0.5,
+              popup = paste("Utility Zone: ", temp_util$comp_full)) %>%
+
+
+  addLegend(position = "bottomright",
+            pal = pal5,
+            group = "Utility Zones",
+            values = temp_util$comp_full,
+            title = "Solstice NY Utilities") %>%
+  addPolygons(data = dac_bgs,
+              group="DAC",
+              popup = paste("Name: ", dac_bgs$geoid, "<br>",
+                           "Pop 2018: ", dac_bgs$pop_2018)) %>%
+  addLayersControl(
+    overlayGroups=c( "Utility Zones", "DAC"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+library(janitor)
+dac_bgs <- st_transform(dac_bgs, st_crs(total_ny_tracts)) %>% st_make_valid()
+
+tot_ny_pop <- sum(total_ny_tracts$total_pop)
+
+temp <- dac_bgs %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(comp_full)) %>%
+  st_drop_geometry() %>%
+  group_by(Name = comp_full) %>%
+  filter(!is.na(Name)) %>%
+  summarize(Population = sum(pop_2018)
+            ) %>%
+  arrange(desc(Population)) %>%
+  adorn_totals("row") %>%
+  mutate(Percentage = Population / tot_ny_pop )
+
+  
+
+datatable(temp, caption = "Interim Disadvantaged Communities (DAC) Population by Utiliy Zone")%>%
+  formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
+  formatPercentage('Percentage', digits = 2)
+
+
+
+
+
+```
+
+
+
+## LMI Qualifications
+
+
+New York LMI Qualification methods are detailed in the [policy matrix](https://coda.io/d/Solstice-Policy_dBUL-zOSfnb/Program-Matrix_suVJB#Program-Matrix_tuLIr/r11&view=full), but in summary include:
+
+  * **LMI - 80% of AMI**
+  * Award letters for EmPower, HEAP, SNAP, TANF, SSSI; HEAP or other assistance on utility bill
+  
+  
+
+
+
+
+The table below shows total population by LMI qualification method by utility area coverage. Note, these LMI groups are not mutually exclusive, rather are snap shots of the individual method's population. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+temp <- total_ny_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(comp_short)) %>%
+  st_drop_geometry() %>%
+  group_by(Name = comp_short) %>%
+  filter(!is.na(Name)) %>%
+  summarize(`Pop under 80 AMI` = sum(AMI_80),
+             `SNAP HH` = sum(snap_hh),
+            `Total Population` = sum(total_pop)) %>%
+  arrange(desc(`Pop under 80 AMI`)) 
+
+
+temp
+# datatable(temp, caption = "New York, Sources: ACS 2019 and HUD CHAS")%>%
+#   formatCurrency('Pop under 80 AMI',currency = "", interval = 3, mark = ",") %>%
+#   formatCurrency('SNAP HH',currency = "", interval = 3, mark = ",") %>%
+#   formatCurrency('Total Population',currency = "", interval = 3, mark = ",") 
+
+
+
+
+
+```
+
+The map shows the census tracts loaded with the LMI qualification methods by utility zone coverage. 
+
+
+
+
+```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE}
+
+
+
+pal <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = ny_geo$AMI_80)
+
+pal2 <- colorNumeric(
+  palette = "Purples",
+ # reverse=TRUE,
+  domain = ny_geo$AMI_80_Pct)
+
+pal3 <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = total_ny_tracts$snap_hh)
+
+library(tidyr)
+
+
+
+ny_lift <- lift_df %>%
+  filter(State=="New York")
+ 
+
+
+
+map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility Zone: ", temp_util$comp_short)
+  ) %>%
+  
+  addPolygons(
+    data = ny_geo,
+    group="80% AMI",  # This should be consistent with the group name in the addLegend function
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal(AMI_80),
+    popup=paste("Tract: ", ny_geo$geoid, "<br>", 
+                "HHs at 80% AMI: ", ny_geo$AMI_80)
+  ) %>%
+
+  addLegend("bottomleft",
+            group="80% AMI",  # This should be consistent with the group name in the addPolygons function
+            pal = pal,
+            values = ny_geo$AMI_80,
+            title="Number of HHs at 80% AMI"
+  ) %>%
+  
+
+  
+  addPolygons(
+    data=total_ny_tracts,
+    group="SNAP",
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.7,
+    color=~pal3(snap_hh),
+    popup=paste("Tract: ", total_ny_tracts$GEOID, "<br>",
+                "Number of HHs Receiving SNAP: ", total_ny_tracts$snap_hh)
+  ) %>%
+
+  addLegend("bottomleft",
+            group="SNAP",
+            pal = pal3,
+            values = total_ny_tracts$snap_hh,
+            title="Number of HHs Receiving SNAP:"
+  ) %>%
+  
+
+
+
+  addLayersControl(
+    overlayGroups=c( "80% AMI", "Utility Zones", "SNAP"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+map %>%
+ hideGroup("SNAP") %>% hideGroup("80% AMI")
+
+```
+
+
+
+
+### LIFT Solar
+
+
+
+Groundswell manages the LIFT solar dataset of over 450 LMI community solar projects across the country. Project capacity (KW AC) and number of potential LMI customers per project is shown from this dataset. Note, there are no LIFT projects in New Mexico. 
+
+
+```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE}
+
+ny_geo <- add_geo %>%
+  filter(State_Name == "New York") 
+
+ny_lift <- lift_df %>%
+  filter(State == "New York")
+
+
+pal_potLMI <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = ny_lift$Potential...LMI.Subscribers)
+
+pal_cap <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = ny_lift$Project.Capacity.KW.AC)
+
+
+
+pal <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = ny_geo$AMI_80)
+
+pal2 <- colorNumeric(
+  palette = "Purples",
+ # reverse=TRUE,
+  domain = ny_geo$AMI_80_Pct)
+
+pal3 <- colorNumeric(
+  palette = "viridis",
+ # reverse=TRUE,
+  domain = total_ny_tracts$snap_hh)
+
+library(tidyr)
+
+
+
+ny_lift <- lift_df %>%
+  filter(State=="New York")
+ 
+
+
+
+map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility Zone: ", temp_util$comp_short)
+  ) %>%
+  
+  addPolygons(
+    data = ny_geo,
+    group="80% AMI",  # This should be consistent with the group name in the addLegend function
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal(AMI_80),
+    popup=paste("Tract: ", ny_geo$geoid, "<br>", 
+                "HHs at 80% AMI: ", ny_geo$AMI_80)
+  ) %>%
+
+  addLegend("bottomleft",
+            group="80% AMI",  # This should be consistent with the group name in the addPolygons function
+            pal = pal,
+            values = ny_geo$AMI_80,
+            title="Number of HHs at 80% AMI"
+  ) %>%
+  
+  # addPolygons(
+  #   data=nm_df,
+  #   group="80% AMI Percent",  # This should be consistent with the group name in the addLegend function
+  #   stroke=FALSE,
+  #   smoothFactor=0.2,
+  #   fillOpacity=0.7,
+  #   color=~pal2(AMI_80_Pct),
+  #   popup=paste("Tract: ", nm_df$geoid, "<br>", 
+  #               "Percent of HHs at 80% AMI: ", nm_df$AMI_80_Pct)
+  # ) %>%
+  # 
+  # addLegend("bottomleft",
+  #           group="80% AMI Percent",  # This should be consistent with the group name in the addPolygons function
+  #           pal = pal2,
+  #           values = nm_df$AMI_80_Pct,
+  #           title="Percent of HHs at 80% AMI"
+  # ) %>%
+  
+  addPolygons(
+    data=total_ny_tracts,
+    group="SNAP",
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.7,
+    color=~pal3(snap_hh),
+    popup=paste("Tract: ", total_ny_tracts$GEOID, "<br>",
+                "Number of HHs Receiving SNAP: ", total_ny_tracts$snap_hh)
+  ) %>%
+
+  addLegend("bottomleft",
+            group="SNAP",
+            pal = pal3,
+            values = total_ny_tracts$snap_hh,
+            title="Number of HHs Receiving SNAP:"
+  ) %>%
+  
+    addCircleMarkers(data = ny_lift,
+                   group="Potential LMI Subscribers",
+                   popup = ~paste("Program Name: ", Program.Name, "<br>",
+                                  "Developer/Owner: ", Project.Developer.or.Owner, "<br>", 
+                                  "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
+                                  "LMI Savings: ", LMI.Customer.Savings.., "<br>",
+                                  "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
+                   radius = ny_lift$Potential...LMI.Subscribers/15, 
+                   color = ~pal_potLMI(Potential...LMI.Subscribers)) %>%
+  addLegend("bottomright",
+            group="Potential LMI Subscribers",  # This should be consistent with the group name in the addPolygons function
+            pal = pal_potLMI,
+            values = ny_lift$Potential...LMI.Subscribers,
+            title="Potential LMI Subscribers") %>%
+
+    ## Project Capacity ## 
+  
+  addCircleMarkers(data = ny_lift,
+                   group="Project Capacity",
+                   popup = ~paste("Program Name: ", Program.Name, "<br>",
+                                  "Developer/Owner: ", Project.Developer.or.Owner, "<br>", 
+                                  "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
+                                  "LMI Savings: ", LMI.Customer.Savings.., "<br>",
+                                  "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
+                   radius = ny_lift$Project.Capacity.KW.AC/100, 
+                   color = ~pal_cap(Project.Capacity.KW.AC)) %>%
+  addLegend("topleft",
+             group="Project Capacity",  # This should be consistent with the group name in the addPolygons function
+            pal = pal_cap,
+            values = ny_lift$Project.Capacity.KW.AC,
+            title="Project Capacity") %>%
+
+
+  addLayersControl(
+    overlayGroups=c( "80% AMI", "Utility Zones", "SNAP","Potential LMI Subscribers", "Project Capacity"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+map %>%
+ hideGroup("SNAP") %>% hideGroup("80% AMI") %>% hideGroup("Project Capacity")
+
+```
+
+
+
+
+
+
+
