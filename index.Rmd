@@ -1,30 +1,16 @@
 ---
-title: "index"
-author: "Jacob Ford"
-date: "2023-09-06"
-output: html_document
+title: "Home"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  rmdformats::downcute:
+    toc_depth: 3
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
-## R Markdown
+# Overview
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This document quantifies the number of income and geographic qualified population in each state Solstice operates in. Utiliy zones are overlaid with these populations to estimate the potential population Solstice would be competing to sign up.The goal of this work is to quantify the potential market for LMI population for future Solstice bidding opportunities. 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Utility coverage is provided by either the [HIFLD](https://hifld-geoplatform.opendata.arcgis.com/datasets/f4cd55044b924fed9bc8b64022966097/explore?location=41.065293%2C-80.583661%2C6.90) national level electric retail service territories or, preferably, state sources that are more granular. Note HIFLD often provides overlapping areas (ex: a municipal boundary and an utility provider) so data should primarily be sourced from state sources or be validated from HIFLD. 
 
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Please refer to the [policy matrix](https://coda.io/d/Solstice-Policy_dBUL-zOSfnb/Program-Matrix_suVJB#Program-Matrix_tuLIr/r11&view=full) on Coda for further details on state specific LMI and geoqualification methods. 
