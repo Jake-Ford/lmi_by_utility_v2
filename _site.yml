@@ -1,0 +1,18 @@
+name: " "
+title: "Posts"
+description: |
+ LMI Scoping Analysis
+output_dir: "docs"
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "New Mexico"
+      href: new_mexico.html
+    - text: "California"
+      href: california.html
+    - text: "Illinois"
+      href: illinois.html
+    - text: "New Jersey"
+      href: new_jersey.html
+output: distill::distill_article
