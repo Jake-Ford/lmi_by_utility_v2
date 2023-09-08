@@ -15,17 +15,7 @@ load_packages()
 
 ```
 
-
-# New Jersey
-
-```{r child="Delaware.Rmd"}
-
-temp_util <- st_read("utility_zones/NJ/Electric_Utilities_Territory_Map_of_New_Jersey.shp") %>%
-  mutate(new_name = case_when(
-    grepl("Municipal", NAME) ~ "Municipal",
-    TRUE ~ NAME
-  ))
-```
+# Overview
 
 We focus on the New Jersey Community Solar Energy Program (CSEP) market. New Jersey residents are served by a variety of electric utilities, seen below: 
 
@@ -48,6 +38,8 @@ nj_geo_qual <- st_read("data/NJ/hud_80pct_80ami/Low_to_Moderate_Income_Populatio
 
   
 ```
+
+
 
 
 
@@ -317,6 +309,8 @@ datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
 
 
 ```
+
+
 
 
 
