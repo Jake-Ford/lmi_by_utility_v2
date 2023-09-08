@@ -9,6 +9,46 @@ reset_crs <- function(df) {
 }
 
 
+
+
+
+
+load_census_data <- function(geo, snap = TRUE, medicaid = TRUE, 
+                             pop = TRUE)
+{
+  
+  temp <- get_acs(
+    
+  )
+  
+  
+}
+
+
+
+load_packages <- function()
+  
+{
+  # load_packages.R
+  required_packages <- c("readxl", "data.table", "DT", 
+                         "sf", "mapview", "dplyr", "scales",
+                         "tidycensus", "tidyverse", "nngeo", 
+                         "leaflet", "janitor", "kableExtra", 
+                         "ggmap", "tidyr")
+  
+  lapply(required_packages, library, character.only = TRUE)
+  
+  
+}
+
+
+
+
+
+
+
+
+
 load_chas <- function()
 {
   

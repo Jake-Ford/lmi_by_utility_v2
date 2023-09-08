@@ -5,26 +5,319 @@ output:
     toc_depth: 3
 ---
 
+
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+source('helper_functions.R')
+load_packages()
+
+
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# New Jersey
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r child="Delaware.Rmd"}
 
-```{r cars}
-summary(cars)
+temp_util <- st_read("utility_zones/NJ/Electric_Utilities_Territory_Map_of_New_Jersey.shp") %>%
+  mutate(new_name = case_when(
+    grepl("Municipal", NAME) ~ "Municipal",
+    TRUE ~ NAME
+  ))
 ```
 
-## Including Plots
+We focus on the New Jersey Community Solar Energy Program (CSEP) market. New Jersey residents are served by a variety of electric utilities, seen below: 
 
-You can also embed plots, for example:
+```{r message=FALSE, warning=FALSE, include=FALSE}
+temp_util <- st_read("utility_zones/NJ/Electric_Utilities_Territory_Map_of_New_Jersey.shp") %>%
+  mutate(new_name = case_when(
+    grepl("Municipal", NAME) ~ "Municipal",
+    TRUE ~ NAME
+  ))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+temp_util <- st_make_valid(temp_util)
+
+nj_geo_qual <- st_read("data/NJ/hud_80pct_80ami/Low_to_Moderate_Income_Population_by_Block_Group.shp") %>%
+  mutate(total_pop = as.integer(Lowmoduniv),
+         geo_tag = case_when(
+           Lowmod_pct >= 0.8 ~ 1,
+           TRUE ~ 0
+         )
+         )
+
+  
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+get_tracts <- get_acs(
+  geography="tract", 
+  state="NJ",
+  variables=c("Median Income" = "S1901_C01_012E"),
+  year=2019, 
+  geometry=TRUE) %>%
+  mutate(MedInc = estimate) %>%
+  select(geoid=GEOID, geometry)
+
+
+
+```
+
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+chas_df <- load_chas() %>%
+    mutate(State_Name = case_when(
+    state == 17 ~ "Illinois",
+    state == 25 ~ "Massachusetts",  
+    state == 27 ~ "Minnesota",  
+    state == 34 ~ "New Jersey",
+    state == 35 ~ "New Mexico",  
+    state == 36 ~ "New York",
+    state == 06 ~ "California",
+    TRUE ~ "Other"
+  )) %>%
+  filter(State_Name == "New Jersey")
+
+
+
+add_geo <- merge(chas_df, get_tracts) 
+
+add_geo <- st_as_sf(add_geo)
+
+
+temp_util <- st_transform(temp_util, st_crs(add_geo)) %>%
+  st_make_valid()
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pal5 <- colorFactor(
+  palette="viridis",
+  domain=temp_util$new_name
+)
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color=~pal5(temp_util$new_name),
+              dashArray="3",
+              fillOpacity=0.5,
+              popup=paste("Utility Zone: ", temp_util$new_name)) %>%
+  addLegend(position="bottomright",
+            pal=pal5,
+            values=temp_util$new_name,
+            title="Solstice NJ Utilities")
+```
+  
+For the CSEP program, both geo- and LMI verifications are allowed. 
+
+
+## Geoqualification
+
+The New Jersey CSEP program allows for geoqualification. Residents must reside within a census block group in which 80 percent or more of the households earn less than 80 percent of the area median income, as determined by data from the U.S. Department of Housing and Urban Development. 
+
+The below map shows the distribution of these households as defined by HUD: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+
+pal5 <- colorFactor(
+  palette=c("white", "darkred"),
+  domain=nj_geo_qual$geo_tag
+)
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=nj_geo_qual,
+              group="Block Groups",
+             # stroke = TRUE,
+              color = ~pal5(nj_geo_qual$geo_tag),
+              fillOpacity=0.75,
+              popup=paste("Census Block Group: ", nj_geo_qual$GEOID, "<br>",
+                          "Population: ", nj_geo_qual$total_pop)) %>%
+  addLegend(position="bottomright",
+            pal=pal5,
+            values=nj_geo_qual$geo_tag,
+            title="NJ Geoqualified Census Block Groups")  %>%
+  
+    addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility: ", temp_util$new_name)) %>%
+  
+      addLayersControl(
+    overlayGroups=c( "Block Groups", "Utility Zones"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+
+```
+
+
+The table below shows that New Jersey has relatively limited geoqualification, less than 10% of the state population resides within a qualified census block group. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+temp_table <- nj_geo_qual %>% 
+  st_drop_geometry() %>%
+  mutate(Geoqualified = case_when(
+    geo_tag == 1 ~ "Yes",
+    TRUE ~ "No"
+  )) %>%
+  group_by(Geoqualified) %>%
+
+  summarize(Population = sum(total_pop)) %>%
+  adorn_totals("row")
+
+
+datatable(temp_table, caption = "New Jersey Geoqualified Population") %>%
+    formatCurrency('Population',currency = "", interval = 3, digits = 0, mark = ",") 
+
+```
+
+
+When broken down by utility zone, we see most of the customers who are geoqualified reside within PSEG: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+
+
+temp_util <- st_transform(temp_util, st_crs(nj_geo_qual))
+
+temp_table <- nj_geo_qual %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  mutate(Geoqualified = case_when(
+    geo_tag == 1 ~ "Yes",
+    TRUE ~ "No"
+  )) %>%
+  group_by(Utility) %>%
+  summarize(Geoqualified = sum(total_pop[geo_tag == 1]),
+            NonGeoqualified = sum(total_pop[geo_tag == 0])) %>%
+  #summarize(Population = sum(total_pop)) %>%
+  adorn_totals("row")
+
+
+datatable(temp_table, caption = "New Jersey Geoqualified Population by Utility") %>%
+    formatCurrency('Geoqualified',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('NonGeoqualified',currency = "", interval = 3, digits = 0, mark = ",") 
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+## LMI Qualificaiton
+
+Self-attestation by the customer that their household income is less than 80 percent of the area median income, as determined by data from the U.S. Department of Housing and Urban Development, provided on a standard form to be approved by the Board and signed by the customer and recorded through an authorized administrator procured by the EDCs
+
+
+We use HUD data that summarizes the total number of households living at or under 80% AMI. This is the total LMI addressable market in New Jersey that could be determined via self-attestation. 
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+pal5 <- colorNumeric(
+  palette=c("Oranges"),
+  domain=add_geo$AMI_80
+)
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=add_geo,
+              group="LMI",
+             # stroke = TRUE,
+              color = ~pal5(add_geo$AMI_80),
+              fillOpacity=0.75,
+              popup=paste("Census Block Group: ", add_geo$GEOID, "<br>",
+                          "Population < 80% AMI: ", add_geo$AMI_80)) %>%
+  addLegend(position="bottomright",
+            pal=pal5,
+            values=add_geo$AMI_80,
+            title="NJ LMI Population")  %>%
+  
+    addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility: ", temp_util$new_name)) %>%
+  
+      addLayersControl(
+    overlayGroups=c( "LMI", "Utility Zones"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+
+```
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+
+
+temp_util <- st_transform(temp_util, st_crs(add_geo))
+
+temp_table <- add_geo %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(LMI_Pop = sum(AMI_80))%>%
+  adorn_totals("row")
+
+
+datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
+    formatCurrency('LMI_Pop',currency = "", interval = 3, digits = 0, mark = ",") 
+
+
+```
+
+
+
+

@@ -18,33 +18,13 @@ output:
 
 
 
+```{r setup, include=FALSE}
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
-#Load packages we'll need throughout the entire document
-library(readxl)
-library(data.table)
-library(DT)
-library(sf)
-library(mapview)
-library(dplyr)
-library(scales)
-library(tidycensus)
-library(tidyverse)
-options(tigris_use_cache = TRUE)
-library(nngeo)
-library(leaflet)
-library(janitor)
-library(DT)
-library(kableExtra)
-library(ggmap)
 source('helper_functions.R')
-library(RColorBrewer)
+load_packages()
 
-library(tidyr)
-options(scipen = 100)
 
 ```
-
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
