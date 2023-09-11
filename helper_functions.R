@@ -52,11 +52,13 @@ load_packages <- function()
 load_chas <- function()
 {
   
+  
   chas_df <- read.csv("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/Engie:Microsoft Geodata/CHAS/Table11.csv")
   
   # return(chas_df)
   chas_df <- chas_df %>%
     filter(st %in% c(17,35,25,34,36,27, 6, 10)) %>%
+
     mutate(geoid = gsub("14000US", "", geoid)) %>%
     
     

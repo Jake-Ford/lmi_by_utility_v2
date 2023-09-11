@@ -9,7 +9,7 @@ output:
 
 # New York (VDER ICSA)
 
-
+The VDER ISCA opeartes both geo- and income verification methods. 
 
 
 ```{r setup, include=FALSE}
@@ -93,6 +93,8 @@ temp_util <- st_read("data/NY/ny_utils.shp") %>%
 
 dac_bgs <- st_read("data/NY/Interim Disadvantaged Communities (DAC)_ 2020/geo_export_ae5e9c30-45bc-4888-87dd-681a41d761d8.shp")
 
+pre_screened <- st_read("data/NY/pre_screened_areas/Census_Tract_Federal_Poverty_150pct.shp")
+
 lift_df <- read.csv("data/groundswell_lift/cs-projects-2023-08-18.csv") 
 
 lift_df <- separate(lift_df, GeoCode, into = c("long", "lat"), sep = ",")
@@ -140,8 +142,7 @@ total_ny_tracts <- cbind(ny_geo, ny_tracts)
 
 ## Geoqualification
 
-Residence in a DAC or EmPower pre-screened area. 
-
+Geoqualification requires a residence in: 
   * [Pre-screened areas](https://www.nyserda.ny.gov/ny/ahp-empower/geo-eligible-income-tool)
   * DAC interim [disadvantaged areas](https://data.ny.gov/Energy-Environment/Interim-Disadvantaged-Communities-DAC-2020/t6wd-tdrv)
 
@@ -155,17 +156,16 @@ We consider the following five utility zones in New York:
   * Orange & Rockland
 
 
-### Pre-screened areas
-
-**to-do**: note, recreating eligible block groups is not available. 
 
 
-### DAC BGs
 
 4,145 census block groups are tagged as disadvantaged communities defined by New York State. 
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pre_screened <- st_transform(pre_screened, st_crs(temp_util)) %>%
+  st_make_valid()
 
 
 temp_util <- st_zm(temp_util, drop = TRUE)
@@ -194,10 +194,18 @@ leaflet() %>%
             title = "Solstice NY Utilities") %>%
   addPolygons(data = dac_bgs,
               group="DAC",
+              color="red",
+              fillOpacity = 0.5,
               popup = paste("Name: ", dac_bgs$geoid, "<br>",
                            "Pop 2018: ", dac_bgs$pop_2018)) %>%
+    addPolygons(data = pre_screened,
+              group="Pre-Screened",
+              fill="purple",
+              fillOpacity = 0.5,
+              popup = paste("Name: ", pre_screened$GEOID, "<br>",
+                           "Pop 2018: ", dac_bgs$pop_2018)) %>%
   addLayersControl(
-    overlayGroups=c( "Utility Zones", "DAC"),  # Update the order for consistency
+    overlayGroups=c( "Utility Zones", "DAC", "Pre-Screened"),  # Update the order for consistency
     options = layersControlOptions(collapsed = FALSE)
   )
 
@@ -230,6 +238,29 @@ datatable(temp, caption = "Interim Disadvantaged Communities (DAC) Population by
   formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
   formatPercentage('Percentage', digits = 2)
 
+
+
+pre_screened <- st_transform(pre_screened, st_crs(total_ny_tracts)) %>% st_make_valid()
+
+
+temp <- pre_screened %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(comp_full)) %>%
+  st_drop_geometry() %>%
+  group_by(Name = comp_full) %>%
+  filter(!is.na(Name)) %>%
+  summarize(Population = sum(POP_2018)
+            ) %>%
+  arrange(desc(Population)) %>%
+  adorn_totals("row") %>%
+  mutate(Percentage = Population / tot_ny_pop )
+
+  
+
+datatable(temp, caption = "Pre-Screened Population by Utiliy Zone")%>%
+  formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
+  formatPercentage('Percentage', digits = 2)
 
 
 

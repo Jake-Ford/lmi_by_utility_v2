@@ -616,3 +616,13 @@ datatable(temp, caption = "New Mexico Distance from Public Housing and Selected 
 
 ```
 
+
+
+
+# LIFT Solar
+
+There are zero community solar projects in New Mexico according to the LIFT solar database. 
+
+
+
+
