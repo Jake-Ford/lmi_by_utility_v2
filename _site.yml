@@ -19,3 +19,8 @@ navbar:
           href: New-Jersey.html
         - text: "Delaware"
           href: Delaware.html
+        - text: "Minnesota"
+          href: Minnesota.html
+        - text: "Massachusetts"
+          href: Massachusetts.html
+          

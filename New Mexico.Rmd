@@ -15,11 +15,13 @@ load_packages()
 ```
 
 
+# Overview
 
+The New Mexico project does not offer geoqualificaiton, however does a number of methods to verify LMI qualification.  
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 
-state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA")
+#state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA")
 
 hifld_df <- st_read("utility_zones/HIFLD/Electric_Retail_Service_Territories (1)/Electric_Retail_Service_Territories.shp") 
 
@@ -34,7 +36,7 @@ census_api_key('ba3d95cae3658f3145daf7f66119ed58a52aaca3')
 
 get_tracts <- get_acs(
   geography="tract", 
-  state=state_list,
+  state="NM",
   variables=c("Median Income" = "S1901_C01_012E"),
   year=2017, 
   geometry=TRUE) %>%
@@ -80,7 +82,7 @@ temp_util <- st_transform(temp_util, st_crs(nm_geo)) %>%
   st_make_valid()
 ```
 
-# LMI Qualifications
+# LMI Qualification
 
 
 New Mexico LMI Qualification methods include:
@@ -206,10 +208,10 @@ temp <- total_nm_tracts %>%
   arrange(desc(`Pop under 80 AMI`)) 
 
 datatable(temp, caption = "New Mexico, Sources: ACS 2019 and HUD CHAS")%>%
-  formatCurrency('Pop under 80 AMI',currency = "", interval = 3, mark = ",") %>%
-  formatCurrency('Medicaid',currency = "", interval = 3, mark = ",") %>%
-  formatCurrency('SNAP HH',currency = "", interval = 3, mark = ",") %>%
-  formatCurrency('Total Population',currency = "", interval = 3, mark = ",") 
+  formatCurrency('Pop under 80 AMI',currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency('Medicaid',currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency('SNAP HH',currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency('Total Population',currency = "", interval = 3, mark = ",", digits = 0) 
 
 
 
@@ -607,10 +609,10 @@ temp <- rbind(temp_15, temp_30)
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 datatable(temp, caption = "New Mexico Distance from Public Housing and Selected Characteristics")%>%
-  formatCurrency('LMI',currency = "", interval = 3, mark = ",") %>%
-  formatCurrency('Medicaid',currency = "", interval = 3, mark = ",") %>%
-  formatCurrency('SNAP',currency = "", interval = 3, mark = ",")  %>%
-  formatCurrency('Total_Pop', currency="", interval = 3, mark = ",")
+  formatCurrency('LMI',currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency('Medicaid',currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency('SNAP',currency = "", interval = 3, mark = ",", digits = 0)  %>%
+  formatCurrency('Total_Pop', currency="", interval = 3, mark = ",", digits = 0)
 
 
 

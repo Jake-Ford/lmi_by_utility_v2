@@ -29,7 +29,7 @@ load_packages()
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 
-state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA")
+state_list <- c("IL", "MA", "MN", "NJ", "NM", "NY",  "CA", "DE")
 
 hifld_df <- st_read("utility_zones/HIFLD/Electric_Retail_Service_Territories (1)/Electric_Retail_Service_Territories.shp") 
 
