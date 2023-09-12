@@ -35,8 +35,17 @@ get_tracts <- get_acs(
   select(geoid=GEOID, geometry)
 
 
-
+temp_util <- st_read("utility_zones/MN/Service_Areas.shp") %>%
+  mutate(new_name = case_when(
+    utility == "XCEL" ~ "XCEL", 
+    grepl("Minnesota Power", temp_util$utility, ignore.case = TRUE) ~ "Minnesota Power",
+    grepl("Otter", temp_util$utility, ignore.case = TRUE) ~ "Otter Tail",
+    grepl("NW WI", temp_util$utility, ignore.case = TRUE) ~ "NW WI"
+    
+    
+  ))
 ```
+
 
 
 
@@ -90,7 +99,7 @@ leaflet() %>%
   addLegend(position="bottomright",
             pal=pal5,
             values=temp_util$new_name,
-            title="Solstice NJ Utilities")
+            title="Solstice MN Utilities")
 ```
 
 # Geoqualification

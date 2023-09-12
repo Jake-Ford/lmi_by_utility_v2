@@ -34,9 +34,19 @@ get_tracts <- get_acs(
   mutate(MedInc = estimate) %>%
   select(geoid=GEOID, geometry)
 
+temp_util <- st_read("utility_zones/MA/pubutil/TOWNS_POLY_V_ELEC.shp") %>%
+  mutate(
+    new_name = case_when(
+      grepl("Municipal", ELEC_LABEL) ~ "Municipal",
+      grepl("NSTAR", ELEC_LABEL) ~ "NSTAR",
+      TRUE ~ ELEC_LABEL
+    )
+  )
+
 
 
 ```
+
 
 
 
@@ -69,7 +79,6 @@ temp_util <- st_transform(temp_util, st_crs(add_geo)) %>%
 
 
 
-## Utility Map
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -90,7 +99,7 @@ leaflet() %>%
   addLegend(position="bottomright",
             pal=pal5,
             values=temp_util$new_name,
-            title="Solstice NJ Utilities")
+            title="Solstice MA Utilities")
 ```
 
 # Geoqualification
@@ -123,7 +132,7 @@ total_ma_tracts <- cbind(add_geo, ma_tracts)
 ```
 
 
-### LIFT Solar
+# LIFT Solar
 
 There are 145 community solar projects in New Jersey according to the LIFT solar database. 
 
