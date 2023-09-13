@@ -61,9 +61,10 @@ chas_df <- load_chas() %>%
     state == 35 ~ "New Mexico",  
     state == 36 ~ "New York",
     state == 06 ~ "California",
+    state == 27 ~ "Minnesota",
     TRUE ~ "Other"
   )) %>%
-  filter(State_Name == "Minnesota")
+  filter(State_Name == "Minnesota") 
 
 
 
@@ -157,14 +158,16 @@ pal2 <- colorNumeric(
  # reverse=TRUE,
   domain = temp_df$AMI_80_Pct)
 
-pal3 <- colorNumeric(
-  palette = "viridis",
- # reverse=TRUE,
-  domain = total_ca_tracts$snap_hh)
+# pal3 <- colorNumeric(
+#   palette = "viridis",
+#  # reverse=TRUE,
+#   domain = total_ca_tracts$snap_hh)
 
 library(tidyr)
 
 
+transformed_radius <- sqrt(temp_lift$Project.Capacity.KW.AC)
+transform_pot <- sqrt(temp_lift$Potential...LMI.Subscribers)
 
 
 
@@ -215,23 +218,23 @@ map <- leaflet() %>%
   #           title="Percent of HHs at 80% AMI"
   # ) %>%
   
-  addPolygons(
-    data=total_ca_tracts,
-    group="SNAP",
-    stroke=FALSE,
-    smoothFactor=0.2,
-    fillOpacity=0.7,
-    color=~pal3(snap_hh),
-    popup=paste("Tract: ", total_ca_tracts$GEOID, "<br>",
-                "Number of HHs Receiving SNAP: ", total_ca_tracts$snap_hh)
-  ) %>%
-
-  addLegend("bottomleft",
-            group="SNAP",
-            pal = pal3,
-            values = total_ca_tracts$snap_hh,
-            title="Number of HHs Receiving SNAP:"
-  ) %>%
+  # addPolygons(
+  #   data=total_ca_tracts,
+  #   group="SNAP",
+  #   stroke=FALSE,
+  #   smoothFactor=0.2,
+  #   fillOpacity=0.7,
+  #   color=~pal3(snap_hh),
+  #   popup=paste("Tract: ", total_ca_tracts$GEOID, "<br>",
+  #               "Number of HHs Receiving SNAP: ", total_ca_tracts$snap_hh)
+  # ) %>%
+  # 
+  # addLegend("bottomleft",
+  #           group="SNAP",
+  #           pal = pal3,
+  #           values = total_ca_tracts$snap_hh,
+  #           title="Number of HHs Receiving SNAP:"
+  # ) %>%
   
     addCircleMarkers(data = temp_lift,
                    group="Potential LMI Subscribers",
@@ -240,7 +243,8 @@ map <- leaflet() %>%
                                   "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
                                   "LMI Savings: ", LMI.Customer.Savings.., "<br>",
                                   "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
-                   radius = temp_lift$Potential...LMI.Subscribers/100, 
+                    radius = sqrt(temp_lift$Potential...LMI.Subscribers),
+               #     radius = temp_lift$Potential...LMI.Subscribers/100, 
                    color = ~pal_potLMI(Potential...LMI.Subscribers)) %>%
   addLegend("bottomright",
             group="Potential LMI Subscribers",  # This should be consistent with the group name in the addPolygons function
@@ -257,22 +261,21 @@ map <- leaflet() %>%
                                   "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
                                   "LMI Savings: ", LMI.Customer.Savings.., "<br>",
                                   "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
-                   radius = temp_lift$Project.Capacity.KW.AC/125, 
+                   radius = transformed_radius,  # Use the transformed values
                    color = ~pal_cap(Project.Capacity.KW.AC)) %>%
   addLegend("topleft",
-             group="Project Capacity",  # This should be consistent with the group name in the addPolygons function
+            group="Project Capacity",
             pal = pal_cap,
-            values = temp_lift$Project.Capacity.KW.AC,
+            values = temp_lift$Project.Capacity.KW.AC,  # Original values for the legend
             title="Project Capacity") %>%
 
-
   addLayersControl(
-    overlayGroups=c( "80% AMI", "Utility Zones", "SNAP","Potential LMI Subscribers", "Project Capacity"),  # Update the order for consistency
+    overlayGroups=c( "80% AMI", "Utility Zones", "Potential LMI Subscribers", "Project Capacity"),  # Update the order for consistency
     options = layersControlOptions(collapsed = FALSE)
   )
 
 map %>%
- hideGroup("SNAP") %>% hideGroup("80% AMI") %>% hideGroup("Project Capacity")
+ hideGroup("SNAP") %>% hideGroup("80% AMI") %>% hideGroup("Project Capacity") %>% hideGroup("Utility Zones")
 
 ```
 

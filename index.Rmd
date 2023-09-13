@@ -14,3 +14,21 @@ This document quantifies the number of income and geographic qualified populatio
 Utility coverage is provided by either the [HIFLD](https://hifld-geoplatform.opendata.arcgis.com/datasets/f4cd55044b924fed9bc8b64022966097/explore?location=41.065293%2C-80.583661%2C6.90) national level electric retail service territories or, preferably, state sources that are more granular. Note HIFLD often provides overlapping areas (ex: a municipal boundary and an utility provider) so data should primarily be sourced from state sources or be validated from HIFLD. 
 
 Please refer to the [policy matrix](https://coda.io/d/Solstice-Policy_dBUL-zOSfnb/Program-Matrix_suVJB#Program-Matrix_tuLIr/r11&view=full) on Coda for further details on state specific LMI and geoqualification methods. 
+
+
+# State Matrix
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+states <- c("New Mexico", "New Jersey", "New York", "Massachusetts",
+            "Illinois", "Minnesota", "California", "Delaware")
+
+geo_qualified <- c("No", "Yes", "Yes", "Yes", 
+                   "Yes", "No?", "Yes", "Yes")
+
+
+temp_table <- data.frame(States = states,
+                         Geoqualification = geo_qualified)
+
+temp_table
+```
+

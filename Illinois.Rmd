@@ -381,7 +381,7 @@ map <- leaflet() %>%
                                   "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
                                   "LMI Savings: ", LMI.Customer.Savings.., "<br>",
                                   "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
-                   radius = temp_lift$Potential...LMI.Subscribers/100, 
+                   radius = sqrt(temp_lift$Potential...LMI.Subscribers), 
                    color = ~pal_potLMI(Potential...LMI.Subscribers)) %>%
   addLegend("bottomright",
             group="Potential LMI Subscribers",  # This should be consistent with the group name in the addPolygons function
@@ -398,7 +398,7 @@ map <- leaflet() %>%
                                   "Project Capacity: ", Project.Capacity.KW.AC, "<br>",
                                   "LMI Savings: ", LMI.Customer.Savings.., "<br>",
                                   "Potential LMI Subscribers: ", Potential...LMI.Subscribers),
-                   radius = temp_lift$Project.Capacity.KW.AC/125, 
+                   radius = sqrt(temp_lift$Project.Capacity.KW.AC), 
                    color = ~pal_cap(Project.Capacity.KW.AC)) %>%
   addLegend("topleft",
              group="Project Capacity",  # This should be consistent with the group name in the addPolygons function
