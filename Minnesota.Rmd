@@ -38,9 +38,9 @@ get_tracts <- get_acs(
 temp_util <- st_read("utility_zones/MN/Service_Areas.shp") %>%
   mutate(new_name = case_when(
     utility == "XCEL" ~ "XCEL", 
-    grepl("Minnesota Power", temp_util$utility, ignore.case = TRUE) ~ "Minnesota Power",
-    grepl("Otter", temp_util$utility, ignore.case = TRUE) ~ "Otter Tail",
-    grepl("NW WI", temp_util$utility, ignore.case = TRUE) ~ "NW WI"
+    grepl("Minnesota Power", utility, ignore.case = TRUE) ~ "Minnesota Power",
+    grepl("Otter", utility, ignore.case = TRUE) ~ "Otter Tail",
+    grepl("NW WI", utility, ignore.case = TRUE) ~ "NW WI"
     
     
   ))
