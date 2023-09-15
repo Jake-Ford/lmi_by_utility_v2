@@ -134,7 +134,7 @@ ca_geo_qual <- st_transform(ca_geo_qual, crs = st_crs(ca_tracts))
 
 ```
 
-## Geoqualification
+# Geoqualification
 
 There are three main methods to geoqualify households in California:
 
@@ -298,7 +298,7 @@ datatable(temp_table, caption = "California Geoqualified Population by Utiliy Zo
 
 ```
 
-## LMI Qualifications
+# LMI Qualifications
 
   * CARE Program
   * FERA Program
@@ -332,7 +332,7 @@ total_ca_tracts <- cbind(add_geo, ca_tracts)
 ```
 
 
-### LIFT Solar
+# LIFT Solar
 
 
 

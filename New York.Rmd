@@ -140,7 +140,7 @@ total_ny_tracts <- cbind(ny_geo, ny_tracts)
 
 
 
-## Geoqualification
+# Geoqualification
 
 Geoqualification requires a residence in: 
   * [Pre-screened areas](https://www.nyserda.ny.gov/ny/ahp-empower/geo-eligible-income-tool)
@@ -269,7 +269,7 @@ datatable(temp, caption = "Pre-Screened Population by Utiliy Zone")%>%
 
 
 
-## LMI Qualifications
+# LMI Qualifications
 
 
 New York LMI Qualification methods are detailed in the [policy matrix](https://coda.io/d/Solstice-Policy_dBUL-zOSfnb/Program-Matrix_suVJB#Program-Matrix_tuLIr/r11&view=full), but in summary include:
@@ -411,7 +411,7 @@ map %>%
 
 
 
-### LIFT Solar
+# LIFT Solar
 
 
 
