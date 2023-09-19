@@ -20,7 +20,7 @@ load_packages()
 
 Delaware's [Community Energy Facilities](https://depsc.delaware.gov/2022/02/01/community-energy-facilities-webpage/) program has an LMI carveout of 15%. LMI customers are defined via geoqualificaiton and income verification/self-attestation. Limited number and availability of utility data requires us to forego the utility overlays for Delaware. We will focus instead on estimating the total population considered for geo- and LMI qualification. 
 
-## Geoqualification
+# Geoqualification
 
 Customers are defined as geoqualified if they reside in a census block "where the median household income is at or below 200% of the U.S. Federal Poverty Guidelines or 60% of the state median household income published by the United States Census Bureau, whichever is greater". 
 
@@ -130,7 +130,7 @@ datatable(temp_table, caption = "Delaware Geoqualified Population") %>%
 
 
 
-## LMI Qualificaiton
+# LMI Qualificaiton
 
 There exists a number of options to verify customer income. Including:
 
@@ -201,7 +201,7 @@ leaflet() %>%
 
 
 
-### LIFT Solar
+# LIFT Solar
 
 
 No projects in LIFT solar database in Delaware. 

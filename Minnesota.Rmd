@@ -113,7 +113,7 @@ leaflet() %>%
 
 
 
-### LIFT Solar
+# LIFT Solar
 
 
 There are 7 projects in the LIFT solar database in Minnesota.  

@@ -8,6 +8,8 @@ output:
 
 # Overview
 
+There two programs to consider in Illinois for LMI population estimation: Solar for All (SFA) and the Microsoft Engie. Each program has unique geo- and LMI qualifications. 
+
 ```{r setup, include=FALSE}
 
 source('helper_functions.R')
@@ -16,6 +18,12 @@ load_packages()
 
 
 ```
+
+
+
+## Utility Zones
+
+There are two main utility zones in Illinois Solstice works with: Ameren and ComEd. Note a third utility, MidAmerican, does have a slight bit of coverage into Mercer and Henry Counties where Ameren and ComEd coverage ends. 
 
 
 
@@ -37,21 +45,25 @@ temp_util <- hifld_df %>%
 
 get_tracts <- get_acs(
   geography="tract", 
-  state=state_list,
+  state="IL",
   variables=c("total_pop" = "B01001_001"),
   year=2019, 
   geometry=TRUE) %>%
   mutate(total_pop = estimate) %>%
-  select(geoid=GEOID, geometry, total_pop)
+  select(geoid=GEOID, geometry, total_pop) 
+
+
+new_tracts <- get_acs(
+  geography="tract", 
+  state="IL",
+  variables=c("total_pop" = "B01001_001"),
+  year=2020, 
+  geometry=TRUE) %>%
+  mutate(total_pop = estimate) %>%
+  select(geoid=GEOID, geometry, total_pop) 
 
 
 ```
-
-
-
-## Geoqualification
-
-
 
 
 
@@ -69,12 +81,43 @@ chas_df <- load_chas() %>%
   ))
 
 il_counties <- get_acs(geography="county",
-                       variables = c(totapop = "B01003_001"), 
+                       variables = c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002"), 
               state = "IL", 
               year = 2021,
-              geometry = TRUE)
+              geometry = TRUE) %>%
+  group_by(NAME, GEOID) %>%
+  summarize(total_pop = estimate[variable=="Total_Pop"],
+            snap_hh = estimate[variable=="snap_hh"],
+            snap_pop = estimate[variable=="snap_pop"])
 
 
+
+il_tracts <- get_acs(
+  geography="tract", 
+  state="IL",
+  variables=c("snap_hh" = "B22001_002",
+              "snap_pop" = "B19058_002",
+              "medicaid_1" = "C27007_004",
+              "medicaid_2" = "C27007_007",
+              "medicaid_3" = "C27007_010",
+              "medicaid_4" = "C27007_014",
+              "medicaid_5" = "C27007_017",
+              "medicaid_6" = "C27007_020",
+              "Total_Pop" = "B01001_001"
+              
+              ),
+  year=2021, 
+  geometry=TRUE) %>%
+  group_by(GEOID) %>%
+  summarize(snap_hh = estimate[variable=="snap_hh"],
+            snap_pop = estimate[variable=="snap_pop"],
+            medicaid_pop =estimate[variable=="medicaid_1"] + 
+                          estimate[variable=="medicaid_2"] +
+                          estimate[variable=="medicaid_3"] +
+                          estimate[variable=="medicaid_4"] +
+                          estimate[variable=="medicaid_5"] +
+                          estimate[variable=="medicaid_6"] ,
+            total_pop = estimate[variable=="Total_Pop"])
 
 add_geo <- merge(chas_df, get_tracts) 
 
@@ -87,10 +130,7 @@ temp_util <- st_transform(temp_util, st_crs(il_geo)) %>%
   st_make_valid()
 ```
 
-## LMI Qualification
 
-
-* 80% AMI
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -99,8 +139,9 @@ pal5 <- colorFactor(
   domain=temp_util$new_name
 )
 
-il_counties <- il_counties %>%
-  filter(GEOID == 17073 | GEOID == 17131)
+# Unhide for Mercer and Henry County MidAmerican Utility deep dive
+# il_counties <- il_counties %>%
+#   filter(GEOID == 17073 | GEOID == 17131)
 
 leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
@@ -136,54 +177,105 @@ leaflet() %>%
 
 
 
+The below table shows the total sums of the demographics and LMI populations by utility zone coverage. ComEd covers about three times as much population as Ameren in Illinois. 
 
-### Total Pop/HH Coverage
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Mercer Demographic Table
+
+
+
+temp <- il_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(NAME)) %>%
+  st_drop_geometry() %>%
+  group_by(Name = NAME) %>%
+  filter(!is.na(Name)) %>%
+  summarize(`Total Pop` = sum(total_pop),
+            `SNAP` = sum(snap_pop),
+            `Medicaid` = sum(medicaid_pop)) %>%
+  adorn_totals("row") 
+
+
+
+temp_get_ami <- il_geo %>%
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(NAME)) %>%
+  st_drop_geometry() %>%
+  group_by(Name = NAME) %>%
+  filter(!is.na(Name)) %>%
+  summarize(`100% AMI` = sum(AMI_100),
+            `80% AMI` = sum(AMI_80)) %>%
+  adorn_totals("row") %>%
+  select(-Name) 
+
+
+  
+temp_total <- cbind(temp, temp_get_ami)
+
+datatable(temp_total, caption = "Total Illinois Demographics by Utility Coverage, Sources: ACS 2021 and HUD CHAS")%>%
+  formatCurrency('Total Pop', currency = "", mark = ",", interval = 3, digits = 0) %>%
+  formatCurrency('SNAP', currency = "", mark = ",", interval = 3, digits = 0) %>%
+  formatCurrency('Medicaid', currency = "", mark = ",", interval = 3, digits = 0) %>%
+  formatCurrency('100% AMI', currency = "", mark = ",", interval = 3, digits = 0) %>%
+  formatCurrency('80% AMI', currency = "", mark = ",", interval = 3, digits = 0) 
+
+
+
+
+```
+
+
+
+
+
+# Geoqualification
+
+The Microsoft Engie project uses a geoqualification map that was designed by Solstice. More details on the data used to create this map can be found [on the Coda Page](https://coda.io/d/Product_dEW7ukwF5E7/MSFT-Engie-Geospatial-Methods_suaHJ#_luvGQ). 
+
+For the SFA Program, an initial set of census tracts were designed ("legacy" layer in the [online map](https://elevate.maps.arcgis.com/apps/webappviewer/index.html?id=924cfbc202f24e22a88f07f21423fad0)), but an updated version was made available ("current" layer). Both layers can be used until June 2024. Each of these layers are shown on the below map. 
+
 
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-# Specify the variables you're interested in
-vars <- c("B01003_001",# total population
-          "B11001_001", # total households
-          "B25003_001" # total occupied households
-          ) 
+engie_tracts <- st_read("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/Engie:Microsoft Geodata/MFST Engie Qualified Tracts.shp") 
 
-# Retrieve population data for Mercer County, Illinois
-mercer_data <- get_decennial(
-  geography = "block",
-  variables = c("total_pop" = "P1_001N",
-                "total_hh" = "H1_001N",
-                "total_occ_hh" = "H1_002N"),
-  state = "IL",
-  county = c("131"),
-  year = 2020,
-  geometry = TRUE
-) %>%
-  group_by(GEOID) %>%
-  summarize(
-    total_pop = value[variable == "total_pop"],
-    total_hh = value[variable == "total_hh"],
-    total_occ_hh = value[variable == "total_occ_hh"]
-  )
-# Retrieve population data for Henry County, Illinois
+# Population Var: TotalPp
 
-henry_data <- get_decennial(
-  geography = "block",
-  variables = c("total_pop" = "P1_001N",
-                "total_hh" = "H1_001N",
-                "total_occ_hh" = "H1_002N"),
-  state = "IL",
-  county = c("073"),
-  year = 2020,
-  geometry = TRUE
-) %>%
-  group_by(GEOID) %>%
-  summarize(
-    total_pop = value[variable == "total_pop"],
-    total_hh = value[variable == "total_hh"],
-    total_occ_hh = value[variable == "total_occ_hh"]
+engie_tracts <- st_transform(engie_tracts, st_crs(get_tracts))
+
+old_sfa <- st_read("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/ILSFA/Qualified Tracts/ILSFA Qualified Tracts.shp")
+
+old_sfa <- st_transform(old_sfa, st_crs(get_tracts))
+
+
+new_sfa <- st_read("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/ILSFA/Updated Map June 2023/Tract_ILSFA_IncomeEligible_POLY_Map-Data/Tract_ILSFA_IncomeEligible_POLY.shp") %>%
+  filter(IncomeElig==1)
+
+new_sfa <- st_transform(new_sfa, st_crs(get_tracts))
+
+
+combined_sfa <- st_read("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/ILSFA/Updated Map June 2023/combined_ilsfa_maps.geojson")
+
+combined_sfa <- st_transform(combined_sfa, st_crs(get_tracts))
+
+
+get_tracts <- get_tracts %>%
+  mutate(
+    engie = (geoid %in% engie_tracts$GEOID),
+    old_sfa = (geoid %in% old_sfa$GEOID)
   )
 
+new_tracts <- new_tracts %>%
+  mutate(
+
+    new_sfa = (geoid %in% new_sfa$GEOID)
+    
+  )
 
 ```
 
@@ -192,42 +284,93 @@ henry_data <- get_decennial(
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-## Mercer Demographic Table
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=engie_tracts,
+              group="Engie",
+             # stroke=TRUE,
+              color="lightgreen",
+              dashArray="3",
+              fillOpacity=0.55,
+              popup=paste("GEOID: ", engie_tracts$GEOID)) %>%
+    addPolygons(data=old_sfa,
+              group="Legacy SFA",
+            #  stroke=TRUE,
+              color="purple",
+              dashArray="3",
+              fillOpacity=0.55,
+              popup=paste("GEOID: ", old_sfa$GEOID)) %>%
+  
+    addPolygons(data=new_sfa,
+              group="Current SFA",
+              #stroke=TRUE,
+              color="darkred",
+              dashArray="3",
+              fillOpacity=0.55,
+              popup=paste("GEOID: ", new_sfa$GEOID)) %>%
+  
+    addPolygons(data=combined_sfa,
+              group="Combined SFA",
+             # stroke=TRUE,
+              color="blue",
+              dashArray="3",
+              fillOpacity=0.55,
+              popup=paste("GEOID: ", combined_sfa$GEOID)) %>%
 
-total_hh <- sum(mercer_data$total_hh)
+  
+  
+  addLayersControl(
+    overlayGroups=c( "Engie", "Legacy SFA", "Current SFA", "Combined SFA"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA")
+```
 
-temp <- mercer_data %>% 
+Note in the below table, you'll see the Engie map covers nearly 62% of the state's population. The combined coverage of SFA using both the legacy and current layers will result in roughly 45% of the state being covered; however, the current SFA map uses census tracts from the 2020 census, whereas the legacy SFA map uses census tracts from the 2010 census. This makes 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# get 2020 population covered by combined layer
+
+temp_centroids <- combined_sfa %>%
   st_point_on_surface() %>%
-  st_make_valid() %>%
-  st_join(temp_util %>% select(NAME)) %>%
+  st_join(new_tracts %>% select(geoid, total_pop)) %>%
   st_drop_geometry() %>%
-  group_by(Name = NAME) %>%
-  filter(!is.na(Name)) %>%
-  summarize(`Total HH` = sum(total_hh),
-            `Total Occupied HH` = sum(total_occ_hh),
-            `Total Population` = sum(total_pop)) %>%
-  adorn_totals("row") %>%
-  mutate('Total HH Pct' = `Total HH` / sum(mercer_data$total_hh),
-         'Total HH Occupied Pct' = `Total Occupied HH` / sum(mercer_data$total_occ_hh) ,
-         'Total Population Pct' = `Total Population` / sum(mercer_data$total_pop) )
+  group_by(geoid) %>%
+  filter(!is.na(geoid)) %>%
+  summarize(total_pop = max(total_pop))
 
-datatable(temp, caption = "Mercer County, Sources: ACS 2019 and HUD CHAS")%>%
-  formatCurrency('Total HH', currency = "", mark = ",", interval = 3, digits = 0) %>%
-  formatCurrency('Total Occupied HH', currency = "", mark = ",", interval = 3, digits = 0) %>%
-  formatCurrency('Total Population', currency = "", mark = ",", interval = 3, digits = 0) %>%
-  formatPercentage('Total HH Pct',digits=2, interval = 3) %>%
-  formatPercentage('Total HH Occupied Pct',digits=2, interval = 3) %>%
-  formatPercentage('Total Population Pct',digits=2, interval = 3)
+
+temp <- data.frame(Method = c("Engie", "Legacy SFA", "Current SFA", "Combined SFA"),
+                   Population = c(sum(get_tracts$total_pop[get_tracts$engie==1]),
+                                 sum(get_tracts$total_pop[get_tracts$old_sfa==1]),
+                                 sum(new_tracts$total_pop[new_tracts$new_sfa==1]),
+                                 sum(temp_centroids$total_pop))
+                   )
+
+temp$`Percent of Total` <- temp$Population/sum(new_tracts$total_pop)
 
 
 
+
+datatable(temp, caption = "Illinois Geoqualification Method Totals")%>%
+  formatCurrency('Population', currency = "", mark = ",", interval = 3, digits = 0) %>%
+  formatPercentage('Percent of Total', digits = 2)
 
 ```
 
 
 
 
-## LIFT Solar
+
+
+
+# LMI Qualification
+
+For the Engie program, we use 100% AMI, SNAP and Medicaid households to estimate LMI populations. For the SFA program, the requirements slightly differ with a lower AMI percentage of 80%, with the same SNAP and Medicaid use cases. 
+
+
+# LIFT Solar
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 il_tracts <- get_acs(

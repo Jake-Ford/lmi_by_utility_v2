@@ -39,7 +39,7 @@ geo_qualified <- c("No", "Yes", "Yes", "Yes",
 
 temp_table <- data.frame(States = states,
                          Geoqualification = geo_qualified)
-
-temp_table
+library(DT)
+datatable(temp_table)
 ```
 
