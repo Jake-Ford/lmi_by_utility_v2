@@ -584,13 +584,15 @@ password <- "GMF0jqu@fyh2uwt2tmx"
 base_url <- "https://datacatalog.cookcountyil.gov"
 endpoint <- "/resource/tx2p-k2g9.json"
 
-# Construct the full URL with the query and limit to 10,000 values
-query <- paste0(
-  base_url,
-  endpoint,
-  "?$where=year = 2022 and class != '200' and class != '202' and class != '203' and class != '204' and class != '205' and class != '206' and class != '207' and class != '208' and class != '209' and class != '210' and class != '211' and class != '212' and class != '234' and class != '278' and class != '295' and class != '201' and class != '213' and class != '218' and class != '219' and class != '225' and class != '297' and class != '299' and class != '300' and class != '301' and class != '313' and class != '314' and class != '415' and class != '318' and class != '391' and class != '396' and class != '397' and class != '399' and class != '900' and class != '901' and class != '913' and class != '914' and class != '915' and class != '918' and class != '959' and class != '990' and class != '991' and class != '996' and class != '997'",
-  "&$limit=10000"
-)
+
+
+res_values <- c('500', '501', '516', '517', '522', '523', '526', '527', '528', '529', '530', 
+                '531', '532', '533', '535', '590', '591', '592', '597', '599', '550', '580', '581', 
+                '583', '587', '589', '593')
+
+where_clause <- sprintf("year = 2022 and class IN ('%s')", paste(res_values, collapse="','"))
+
+query <- sprintf("%s%s?$where=%s&$limit=10000", base_url, endpoint, where_clause)
 
 # Get the data
 cook_parcels <- read.socrata(query, app_token = app_token, email = email, password = password)
@@ -598,10 +600,27 @@ cook_parcels <- read.socrata(query, app_token = app_token, email = email, passwo
 # Filter out rows with NA in 'lat' column
 cook_parcels <- dplyr::filter(cook_parcels, !is.na(lat))
 
+
 ```
 
 
 
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+
+# Create a vector of class values
+res_values <- c('401', '407', '407', '418', '422', '423', '426', '427', '428', '429', '430', 
+                '431', '432', '433', '480', '487', '483', '487', '489', '490', '491', '492', '493', 
+                '496', '497', '499')
+
+where_clause <- sprintf("year = 2022 and class IN ('%s')", paste(res_values, collapse="','"))
+
+# Construct the full URL with the query
+query <- sprintf("%s%s?$where=%s", base_url, endpoint, where_clause)
+
+# Get the data
+non_profit_parcels <- read.socrata(query, app_token = app_token, email = email, password = password)
+```
 
 
 
@@ -949,6 +968,52 @@ new_values$Code <- gsub("-", "", new_values$Code)
 data <- rbind(data, new_values)
 
 
+
+
+# New values for codes starting with "4-XX"
+additional_values <- data.frame(
+  Code = c(
+    "4-00", "4-01", "4-17", "4-18", "4-22", "4-23", "4-26", "4-27", "4-28", "4-29",
+    "4-30", "4-31", "4-32", "4-33", "4-80", "4-81", "4-83", "4-87", "4-89", "4-90",
+    "4-91", "4-92", "4-93", "4-96", "4-97", "4-99"
+  ),
+  Description = c(
+    "Not-for-profit land",
+    "Not-for-profit ancillary structures used in conjunction with commercial non-profit improvements (garage, mechanical structures, storage sheds, etc.)",
+    "Not-for-profit one-story commercial building",
+    "Not-for-profit two-or-three story mixed-use commercial/residential building",
+    "Not-for-profit one-story non-fireproof public garage",
+    "Not-for-profit gasoline station",
+    "Not-for-profit commercial greenhouse",
+    "Not-for-profit theatre",
+    "Not-for-profit bank building",
+    "Not-for-profit motel",
+    "Not-for-profit supermarket",
+    "Not-for-profit shopping center",
+    "Not-for-profit bowling alley",
+    "Not-for-profit Quonset hut or butler type building",
+    "Not-for-profit industrial minor improvement",
+    "Not-for-profit ancillary structures used in conjunction with industrial non-profit improvements (garage, mechanical structures, storage sheds, etc.)",
+    "Not-for-profit industrial Quonset hut or butler type building",
+    "Not-for-profit special industrial improvement",
+    "Not-for-profit industrial condominium",
+    "Not-for-profit commercial minor improvement",
+    "Not-for-profit improvement over three stories",
+    "Not-for-profit, two-or-three story building containing part of all retail and/or commercial space",
+    "Not-for-profit industrial building",
+    "Not-for-profit, rented modern row houses, seven or more units in a single development",
+    "Not-for-profit special structure",
+    "Not-for-profit condominium"
+  )
+)
+
+# Remove the hyphen from the Code column
+additional_values$Code <- gsub("-", "", additional_values$Code)
+
+# Append the new values to the existing dataframe
+data <- rbind(data, new_values, additional_values)
+
+
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -960,6 +1025,17 @@ for (i in 1:nrow(cook_parcels)) {
     cook_parcels$class_full[i] <- NA  # or any other placeholder value indicating no match
   }
 }
+
+
+for (i in 1:nrow(non_profit_parcels)) {
+  matching_description <- data$Description[data$Code == gsub("-", "", non_profit_parcels$class[i])]
+  if (length(matching_description) > 0) {
+    non_profit_parcels$class_full[i] <- matching_description
+  } else {
+    non_profit_parcels$class_full[i] <- NA  # or any other placeholder value indicating no match
+  }
+}
+
 
 ```
 
@@ -978,6 +1054,16 @@ cook_parcels <- cook_parcels %>%
   st_join(engie_tracts %>% select(engie_tag = tag)) %>%
   st_join(combined_sfa %>% select(sfa_tag = tag))
   
+
+non_profit_parcels <- st_as_sf(non_profit_parcels, coords = c("lon", "lat"), crs = 4326) 
+
+non_profit_parcels <- non_profit_parcels %>%
+  st_transform(crs = st_crs(engie_tracts)) 
+
+non_profit_parcels <- non_profit_parcels %>%
+  st_point_on_surface() %>%
+  st_join(engie_tracts %>% select(engie_tag = tag)) %>%
+  st_join(combined_sfa %>% select(sfa_tag = tag))
   
   
   
@@ -987,14 +1073,32 @@ cook_parcels <- cook_parcels %>%
 
 
 
-
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
 
 
 pal <- colorFactor(palette = c("red", "darkgreen"),  cook_parcels$engie_tag)
 
 leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
+  
+  #non profit
+    addCircles(data=non_profit_parcels,
+                   group="NFP Engie Parcels",
+                   color= ~pal(engie_tag),
+                   fillOpacity=0.95,
+                   popup=paste("Name: ", non_profit_parcels$mail_address_name, "<br>",
+                               "Address: ", non_profit_parcels$prop_address_full, "<br>", 
+                               "Class: ", non_profit_parcels$class_full)) %>%
+    addCircles(data=non_profit_parcels,
+                   group="NFP SFA Parcels",
+                   color= ~pal(sfa_tag),
+                   fillOpacity=0.8,
+                   popup=paste("Name: ", non_profit_parcels$mail_address_name, "<br>",
+                               "Address: ", non_profit_parcels$prop_address_full, "<br>", 
+                               "Class: ", non_profit_parcels$class_full)) %>%
+  # total cook county 
   addCircles(data=cook_parcels,
                    group="Engie Parcels",
                    color= ~pal(engie_tag),
@@ -1018,6 +1122,8 @@ leaflet() %>%
               popup=paste("GEOID: ", engie_tracts$GEOID)) %>%
 
   
+  
+  
     addPolygons(data=combined_sfa,
               group="Combined SFA",
              # stroke=TRUE,
@@ -1029,10 +1135,10 @@ leaflet() %>%
   
   
   addLayersControl(
-    overlayGroups=c( "Engie", "Engie Parcels", "SFA Parcels", "Combined SFA"),  # Update the order for consistency
+    overlayGroups=c( "Engie", "Engie Parcels","NFP Engie Parcels", "Combined SFA", "SFA Parcels", "NFP SFA Parcels"),  # Update the order for consistency
     options = layersControlOptions(collapsed = FALSE)
   ) %>%
-  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA")
+  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA") %>% hideGroup("NFP SFA Parcels") %>% hideGroup("NFP Engie Parcels")
 ```
 
 
