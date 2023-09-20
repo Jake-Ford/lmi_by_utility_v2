@@ -17,7 +17,7 @@ Utility coverage is provided by either the [HIFLD](https://hifld-geoplatform.ope
 
 # Parcel Coverage
 
-Using parcel data, we can tag individual plots considered eligible by various state programs. When data is available, further analyses can provide breakdowns between residential and commercial buildings, allowing marketing to zero in on potential sites for a variety of applications such as corporation identification. Note, this process is only available in states where sufficient and open sourced parcel data is made available. Examples include Illinois. 
+Using parcel data, we can tag individual plots considered eligible by various state programs. When data is available, further analyses can provide breakdowns between residential and commercial buildings, allowing marketing to zero in on potential sites for a variety of applications such as corporation identification. Note, this process is only available in states where sufficient and open sourced parcel data is made available. Examples include [Illinois](https://jake-ford.github.io/lmi_by_utility_v2/Illinois.html). 
 
 # Solar Saturation
 

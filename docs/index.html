@@ -20,6 +20,14 @@
         <script src="site_libs/downcute-0.1/downcute_styles.js"></script>
         <script src="site_libs/downcute-0.1/downcute.js"></script>
         <script src="site_libs/prism-1.22/prism.js"></script>
+        <script src="site_libs/htmlwidgets-1.6.2/htmlwidgets.js"></script>
+        <link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+        <script src="site_libs/datatables-binding-0.28/datatables.js"></script>
+        <link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
+        <link href="site_libs/dt-core-1.13.4/css/jquery.dataTables.extra.css" rel="stylesheet" />
+        <script src="site_libs/dt-core-1.13.4/js/jquery.dataTables.min.js"></script>
+        <link href="site_libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet" />
+        <script src="site_libs/crosstalk-1.2.0/js/crosstalk.min.js"></script>
     
     
     
@@ -190,7 +198,7 @@
       <h1 class="title">Home</h1>
       
       <p class="authors">
-         <p class="date"><span class="glyphicon glyphicon-calendar"></span> 15
+         <p class="date"><span class="glyphicon glyphicon-calendar"></span> 20
 September, 2023</p>
            
 
@@ -225,7 +233,10 @@ primarily be sourced from state sources or be validated from HIFLD.</p>
 various state programs. When data is available, further analyses can
 provide breakdowns between residential and commercial buildings,
 allowing marketing to zero in on potential sites for a variety of
-applications such as large</p>
+applications such as corporation identification. Note, this process is
+only available in states where sufficient and open sourced parcel data
+is made available. Examples include <a
+href="https://jake-ford.github.io/lmi_by_utility_v2/Illinois.html">Illinois</a>.</p>
 </div>
 <div id="solar-saturation" class="section level1">
 <h1>Solar Saturation</h1>
@@ -237,15 +248,8 @@ may supplement LIFT.</p>
 </div>
 <div id="total-eligible-population-comparison" class="section level1">
 <h1>Total Eligible Population Comparison</h1>
-<pre><code>##          States Geoqualification
-## 1    New Mexico               No
-## 2    New Jersey              Yes
-## 3      New York              Yes
-## 4 Massachusetts              Yes
-## 5      Illinois              Yes
-## 6     Minnesota              No?
-## 7    California              Yes
-## 8      Delaware              Yes</code></pre>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-23586213b70927dbe43b" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-23586213b70927dbe43b">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8"],["New Mexico","New Jersey","New York","Massachusetts","Illinois","Minnesota","California","Delaware"],["No","Yes","Yes","Yes","Yes","No?","Yes","Yes"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>States<\/th>\n      <th>Geoqualification<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 
