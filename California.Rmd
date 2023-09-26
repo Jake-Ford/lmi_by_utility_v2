@@ -6,19 +6,19 @@ output:
 ---
 
 
-# California
+# Overview
 
-**to-do** 
-
-1. add the CCA terriorties + penetration 
-2. add CS saturation layer - how much current CS is in the market currently? 
-3. add in the EIA number of households 
-
-
+California represents the largest residential and community solar market in the United States. The latest 2023 Q3 Woods Mackenzie report estimates California's community solar PV will increase to 540 mWh, representing approximately a third of the United State's total community solar market. Essential to accessing this market for Solstice is understanding how many individuals make up the geo- and LMI qualifications. Solstice considers the Net Value Billing Tariff (NVBT) program in California. 
 
 
 
 ```{r setup, include=FALSE}
+
+# **to-do** 
+# 
+# 1. add the CCA terriorties + penetration 
+# 2. add CS saturation layer - how much current CS is in the market currently? 
+# 3. add in the EIA number of households 
 
 source('helper_functions.R')
 load_packages()
@@ -134,24 +134,13 @@ ca_geo_qual <- st_transform(ca_geo_qual, crs = st_crs(ca_tracts))
 
 ```
 
-# Geoqualification
 
-There are three main methods to geoqualify households in California:
+## Utilities {.tabset}
 
-
-  * Underserved community - low-income community under Health and Safety Code Sec. 39713
-  * CalEnviroScreen disadvantaged community top quartile (ClscoreP)
-  * California Native American tribe Public Resources Code Sec. 21073
-
-The [California Energy Commission](https://cecgis-caenergy.opendata.arcgis.com/datasets/CAEnergy::low-income-or-disadvantaged-communities-designated-by-california/explore?location=37.177590%2C-119.274072%2C7.63) publishes the state specific low-income or disadvantaged communities. Census tracts with median household incomes at or below 80 percent of the statewide median income or with median household incomes at or below the threshold designated as low income by the Department of Housing and Community Development’s list of state income limits adopted under Healthy and Safety Code section 50093 and/or Census tracts receiving the highest 25 percent of overall scores in CalEnviroScreen 4.0 or Census tracts lacking overall scores in CalEnviroScreen 4.0 due to data gaps, but receiving the highest 5 percent of CalEnviroScreen 4.0 cumulative population burden scores or Census tracts identified in the 2017 DAC designation as disadvantaged, regardless of their scores in CalEnviroScreen 4.0 or Lands under the control of federally recognized Tribes. 
-
-
-## California Maps {.tabset}
-
+California utilities are either investor owned (IOU) or publicly owned (POU). The maps below show the IOU/POU breakdown, in addition to the full categorical breakdown. Pacific Gas & Electric Company (PG&E) is the largest utility provider in California. Two other utilites are included in our analysis for California's NVBT program: San Diego Gas & Electric (SDG&E) and Southern California Edison (SCE)
 
 ### IOU-POU
 
-California electric utility zones are shown below, broken out by IOU and POU status. 
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -180,7 +169,7 @@ leaflet() %>%
 ```
 
 
-### Utilities
+### California Utilities
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 pal5 <- colorFactor(
@@ -209,6 +198,19 @@ leaflet() %>%
 
 
 
+# Geoqualification
+
+There are three main methods to geoqualify households in California:
+
+
+  * Underserved community - low-income community under Health and Safety Code Sec. 39713
+  * CalEnviroScreen disadvantaged community top quartile (ClscoreP)
+  * California Native American tribe Public Resources Code Sec. 21073
+
+The [California Energy Commission](https://cecgis-caenergy.opendata.arcgis.com/datasets/CAEnergy::low-income-or-disadvantaged-communities-designated-by-california/explore?location=37.177590%2C-119.274072%2C7.63) publishes the state specific low-income or disadvantaged communities. Census tracts with median household incomes at or below 80 percent of the statewide median income or with median household incomes at or below the threshold designated as low income by the Department of Housing and Community Development’s list of state income limits adopted under Healthy and Safety Code section 50093 and/or Census tracts receiving the highest 25 percent of overall scores in CalEnviroScreen 4.0 or Census tracts lacking overall scores in CalEnviroScreen 4.0 due to data gaps, but receiving the highest 5 percent of CalEnviroScreen 4.0 cumulative population burden scores or Census tracts identified in the 2017 DAC designation as disadvantaged, regardless of their scores in CalEnviroScreen 4.0 or Lands under the control of federally recognized Tribes. 
+
+
+
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 temp <- ca_tracts %>%
@@ -224,7 +226,7 @@ temp$Population <- temp$estimate
 
 ```
 
-
+The table below shows the total geoqualified population in California. 58% of the state is geoqualified. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -234,11 +236,15 @@ temp_table <- temp %>%
   group_by(var) %>%
   summarize(Population = sum(Population)) %>%
   select(`Population Geoqualified` = Population ) %>%
-  mutate(`Population Total` = sum(ca_tracts$estimate))
+  mutate(`Population Total` = sum(ca_tracts$estimate)) %>%
+  mutate(Percent = `Population Geoqualified`/`Population Total`) %>%
+  select(`Population Geoqualified`, Percent, `Population Total`)
 
 
 datatable(temp_table, caption = "California Geoqualified Population") %>%
     formatCurrency('Population Geoqualified',currency = "", interval = 3, mark = ",") %>%
+    formatPercentage('Percent',digit=2) %>%
+
     formatCurrency('Population Total',currency = "", interval = 3, mark = ",")
 
 
@@ -246,7 +252,7 @@ datatable(temp_table, caption = "California Geoqualified Population") %>%
 
 
 
-We'll quantify how many people are within these geoqualified zone, then break it down by utility zone. 
+Out of the nearly 23 million living in geoqualified zones, 36% reside within SCE, 30% reside within PG&E. The remainder are covered by POU or other utility zones not considered by Solstice in California's NVBT. Interestingly, while PG&E is the largest utility in California, SCE represents the largest share of geoqualified population in California. 
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -256,7 +262,8 @@ We'll quantify how many people are within these geoqualified zone, then break it
 tot_ca_pop <- sum(ca_tracts$estimate)
 
 iou_utils <- temp_util %>%
-  filter(Type=="IOU") %>%
+  filter(Acronym %in% c("PG&E", "SCE", "SDG&E")) %>%
+ # filter(Type=="IOU") %>%
   st_make_valid()
 
 
@@ -299,6 +306,8 @@ datatable(temp_table, caption = "California Geoqualified Population by Utiliy Zo
 ```
 
 # LMI Qualifications
+
+For California's NVBT program, we consider the following proxies for LMI qualifications:
 
   * CARE Program
   * FERA Program

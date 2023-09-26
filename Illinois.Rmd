@@ -21,6 +21,7 @@ load_packages()
 
 
 
+
 ## Utility Zones
 
 There are two main utility zones in Illinois Solstice works with: Ameren and ComEd. Note a third utility, MidAmerican, does have a slight bit of coverage into Mercer and Henry Counties where Ameren and ComEd coverage ends. 
@@ -1143,6 +1144,152 @@ leaflet() %>%
 
 
 
+# Olive Township Analysis
 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+townships <- st_read("data/IL/Illinois_Political_Townships/Illinois_Political_Townships.shp") %>%
+  filter(NAME %in% c("DORCHESTER TWP", "STAUNTON TWP", "WALSHVILLE TWP", "NEW DOUGLAS TWP", "ALHAMBRA TWP", "OMPHGHENT TWP", "OLIVE TWP"))
+
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=add_geo,
+              group="Geo",
+             # stroke=TRUE,
+              color="lightgreen",
+              dashArray="3",
+              fillOpacity=0.55,
+              popup=paste("GEOID: ", add_geo$geoid, "<br>",
+                          "Total Pop: ", add_geo$total_pop, "<br>",
+                          "80% AMI: ", add_geo$AMI_80)) %>%
+
+    # 
+    # addPolygons(data=combined_sfa,
+    #           group="Combined SFA",
+    #          # stroke=TRUE,
+    #           color="blue",
+    #           dashArray="3",
+    #           fillOpacity=0.55,
+    #           popup=paste("GEOID: ", combined_sfa$GEOID)) %>%
+  addPolygons(data=townships,
+              group="Townships",
+              color="red",
+              popup=paste("Township Name: ", townships$NAME)) %>%
+
+  
+  
+  addLayersControl(
+    overlayGroups=c( "Geo", "Combined SFA", "Townships"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA")
+```
+
+
+
+
+
+```{r}
+
+
+townships <- st_transform(townships, st_crs(add_geo))
+
+intersected <- st_intersection(add_geo, townships)
+
+intersected$area_intersected <- st_area(intersected)
+
+add_geo$total_area_tract <- st_area(add_geo)
+
+temp <- add_geo %>%
+ # mutate(area = st_area()) %>%
+  st_drop_geometry()
+
+intersected <- intersected %>%
+  st_drop_geometry()
+
+temp <- left_join(temp, intersected[, c("total_pop", "AMI_80", "area_intersected")], by = c("total_pop", "AMI_80"))
+
+temp$area_ratio <- temp$area_intersected / temp$total_area_tract
+
+temp$total_pop_adjusted <- temp$total_pop * temp$area_ratio
+temp$AMI_80_adjusted <- temp$AMI_80 * temp$area_ratio
+
+
+final_temp <- temp %>%
+  mutate(temp = 1) %>%
+  group_by(temp) %>%
+  summarize(total_pop_adjusted=sum(total_pop_adjusted, na.rm=T),
+            AMI_80_adjusted = sum(AMI_80_adjusted, na.rm=T))
+final_temp
+```
+
+# Madison County
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+madison_county <- get_acs(
+  geography="county", 
+  state="IL",
+  variables=c("total_pop" = "B01001_001"),
+  year=2020, 
+  county = "Madison",
+  geometry=TRUE) %>%
+  mutate(total_pop = estimate) %>%
+  select(geoid=GEOID, geometry, total_pop) 
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=add_geo,
+              group="Geo",
+             # stroke=TRUE,
+              color="lightgreen",
+              dashArray="3",
+              fillOpacity=0.55,
+              popup=paste("GEOID: ", add_geo$geoid, "<br>",
+                          "Total Pop: ", add_geo$total_pop, "<br>",
+                          "80% AMI: ", add_geo$AMI_80)) %>%
+
+    # 
+    # addPolygons(data=combined_sfa,
+    #           group="Combined SFA",
+    #          # stroke=TRUE,
+    #           color="blue",
+    #           dashArray="3",
+    #           fillOpacity=0.55,
+    #           popup=paste("GEOID: ", combined_sfa$GEOID)) %>%
+  addPolygons(data=madison_county,
+              group="Madison",
+              color="red",
+              popup=paste("Township Name: ", madison_county$geoid)) %>%
+
+  
+  
+  addLayersControl(
+    overlayGroups=c( "Geo", "Combined SFA", "Madison"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA")
+```
+
+
+```{r}
+mad_geos <- add_geo %>%
+  filter(grepl("Madison County", name))
+```
 
 
