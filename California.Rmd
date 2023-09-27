@@ -8,7 +8,7 @@ output:
 
 # Overview
 
-California represents the largest residential and community solar market in the United States. The latest 2023 Q3 Woods Mackenzie report estimates California's community solar PV will increase to 540 mWh, representing approximately a third of the United State's total community solar market. Essential to accessing this market for Solstice is understanding how many individuals make up the geo- and LMI qualifications. Solstice considers the Net Value Billing Tariff (NVBT) program in California. 
+California represents the largest residential and potentially the largest community solar market in the United States. The latest 2023 Q3 Woods Mackenzie report estimates California's community solar PV will increase to 540 mWh, representing approximately a third of the United State's total community solar market. Essential to accessing this market for Solstice is understanding how many individuals make up the geo- and LMI qualifications. Solstice considers the Net Value Billing Tariff (NVBT) program in California. 
 
 
 
