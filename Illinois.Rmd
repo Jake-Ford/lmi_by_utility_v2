@@ -371,8 +371,6 @@ datatable(temp, caption = "Illinois Geoqualification Method Totals")%>%
 For the Engie program, we use 100% AMI, SNAP and Medicaid households to estimate LMI populations. For the SFA program, the requirements slightly differ with a lower AMI percentage of 80%, with the same SNAP and Medicaid use cases. 
 
 
-# LIFT Solar
-
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 il_tracts <- get_acs(
   geography="tract", 
@@ -397,6 +395,107 @@ total_il_tracts <- cbind(il_geo, il_tracts)
 
 ```
 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+snap_pal <- colorNumeric(
+  palette=c("Oranges"),
+  domain=total_il_tracts$snap_hh
+)
+
+ami_pal <- colorNumeric(
+  palette=c("Purples"),
+  domain=total_il_tracts$AMI_80
+)
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  
+  # Utility Zones
+    addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility Zone: ", temp_util$new_name)) %>%
+
+
+  # SNAP
+  
+  addPolygons(data=total_il_tracts,
+              group="SNAP",
+             # stroke = TRUE,
+              color = ~snap_pal(total_il_tracts$snap_hh),
+              fillOpacity=0.75,
+              popup=paste("Census Block Group: ", total_il_tracts$geoid, "<br>",
+                          "SNAP HHs: ", total_il_tracts$snap_hh)) %>%
+  addLegend(position="topleft",
+            pal=snap_pal,
+            group="SNAP",
+            values=total_il_tracts$snap_hh,
+            title="SNAP HHs")  %>%
+  
+  # AMI
+  addPolygons(data=total_il_tracts,
+              group="80% AMI",
+             # stroke = TRUE,
+              color = ~ami_pal(total_il_tracts$AMI_80),
+              fillOpacity=0.75,
+              popup=paste("Census Block Group: ", total_il_tracts$geoid, "<br>",
+                          "80% AMI: ", total_il_tracts$AMI_80)) %>%
+  addLegend(position="bottomleft",
+            pal=ami_pal,
+            group="80% AMI",
+            values=total_il_tracts$AMI_80,
+            title="80% AMI")  %>%
+  
+      addLayersControl(
+    overlayGroups=c( "SNAP", "Utility Zones", "80% AMI"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup("80% AMI")
+
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+
+
+
+temp_table <- total_il_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(`80% AMI` = sum(AMI_80),
+            SNAP = sum(snap_hh),
+            `Total Pop` = sum(total_pop))%>%
+  adorn_totals("row")
+
+
+datatable(temp_table, caption = "Illinois LMI Population by Utility") %>%
+    formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") 
+
+
+
+
+```
+
+
+
+
+# LIFT Solar
 
 
 There are 13 community solar projects in New Jersey according to the LIFT solar database. 
@@ -1142,154 +1241,5 @@ leaflet() %>%
   hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA") %>% hideGroup("NFP SFA Parcels") %>% hideGroup("NFP Engie Parcels")
 ```
 
-
-
-# Olive Township Analysis
-
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-
-townships <- st_read("data/IL/Illinois_Political_Townships/Illinois_Political_Townships.shp") %>%
-  filter(NAME %in% c("DORCHESTER TWP", "STAUNTON TWP", "WALSHVILLE TWP", "NEW DOUGLAS TWP", "ALHAMBRA TWP", "OMPHGHENT TWP", "OLIVE TWP"))
-
-
-```
-
-
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
-
-leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addPolygons(data=add_geo,
-              group="Geo",
-             # stroke=TRUE,
-              color="lightgreen",
-              dashArray="3",
-              fillOpacity=0.55,
-              popup=paste("GEOID: ", add_geo$geoid, "<br>",
-                          "Total Pop: ", add_geo$total_pop, "<br>",
-                          "80% AMI: ", add_geo$AMI_80)) %>%
-
-    # 
-    # addPolygons(data=combined_sfa,
-    #           group="Combined SFA",
-    #          # stroke=TRUE,
-    #           color="blue",
-    #           dashArray="3",
-    #           fillOpacity=0.55,
-    #           popup=paste("GEOID: ", combined_sfa$GEOID)) %>%
-  addPolygons(data=townships,
-              group="Townships",
-              color="red",
-              popup=paste("Township Name: ", townships$NAME)) %>%
-
-  
-  
-  addLayersControl(
-    overlayGroups=c( "Geo", "Combined SFA", "Townships"),  # Update the order for consistency
-    options = layersControlOptions(collapsed = FALSE)
-  ) %>%
-  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA")
-```
-
-
-
-
-
-```{r}
-
-
-townships <- st_transform(townships, st_crs(add_geo))
-
-intersected <- st_intersection(add_geo, townships)
-
-intersected$area_intersected <- st_area(intersected)
-
-add_geo$total_area_tract <- st_area(add_geo)
-
-temp <- add_geo %>%
- # mutate(area = st_area()) %>%
-  st_drop_geometry()
-
-intersected <- intersected %>%
-  st_drop_geometry()
-
-temp <- left_join(temp, intersected[, c("total_pop", "AMI_80", "area_intersected")], by = c("total_pop", "AMI_80"))
-
-temp$area_ratio <- temp$area_intersected / temp$total_area_tract
-
-temp$total_pop_adjusted <- temp$total_pop * temp$area_ratio
-temp$AMI_80_adjusted <- temp$AMI_80 * temp$area_ratio
-
-
-final_temp <- temp %>%
-  mutate(temp = 1) %>%
-  group_by(temp) %>%
-  summarize(total_pop_adjusted=sum(total_pop_adjusted, na.rm=T),
-            AMI_80_adjusted = sum(AMI_80_adjusted, na.rm=T))
-final_temp
-```
-
-# Madison County
-
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-
-madison_county <- get_acs(
-  geography="county", 
-  state="IL",
-  variables=c("total_pop" = "B01001_001"),
-  year=2020, 
-  county = "Madison",
-  geometry=TRUE) %>%
-  mutate(total_pop = estimate) %>%
-  select(geoid=GEOID, geometry, total_pop) 
-
-```
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
-
-leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addPolygons(data=add_geo,
-              group="Geo",
-             # stroke=TRUE,
-              color="lightgreen",
-              dashArray="3",
-              fillOpacity=0.55,
-              popup=paste("GEOID: ", add_geo$geoid, "<br>",
-                          "Total Pop: ", add_geo$total_pop, "<br>",
-                          "80% AMI: ", add_geo$AMI_80)) %>%
-
-    # 
-    # addPolygons(data=combined_sfa,
-    #           group="Combined SFA",
-    #          # stroke=TRUE,
-    #           color="blue",
-    #           dashArray="3",
-    #           fillOpacity=0.55,
-    #           popup=paste("GEOID: ", combined_sfa$GEOID)) %>%
-  addPolygons(data=madison_county,
-              group="Madison",
-              color="red",
-              popup=paste("Township Name: ", madison_county$geoid)) %>%
-
-  
-  
-  addLayersControl(
-    overlayGroups=c( "Geo", "Combined SFA", "Madison"),  # Update the order for consistency
-    options = layersControlOptions(collapsed = FALSE)
-  ) %>%
-  hideGroup("Legacy SFA") %>% hideGroup("Current SFA") %>% hideGroup("Combined SFA")
-```
-
-
-```{r}
-mad_geos <- add_geo %>%
-  filter(grepl("Madison County", name))
-```
 
 
