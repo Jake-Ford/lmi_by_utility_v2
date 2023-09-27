@@ -238,6 +238,9 @@ datatable(temp, caption = "Interim Disadvantaged Communities (DAC) Population by
   formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
   formatPercentage('Percentage', digits = 2)
 
+temp %>%
+  filter(Name=="Total") %>%
+  write_csv("final_data/ny_geo_total.csv")
 
 
 pre_screened <- st_transform(pre_screened, st_crs(total_ny_tracts)) %>% st_make_valid()
@@ -409,6 +412,42 @@ map %>%
 ```
 
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+
+
+
+temp_table <- total_ny_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = comp_short)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(`80% AMI` = sum(AMI_80),
+            SNAP = sum(snap_hh),
+            `Total Pop` = sum(total_pop))%>%
+  adorn_totals("row")
+
+
+datatable(temp_table, caption = "New York LMI Population by Utility") %>%
+    formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") 
+
+
+
+
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+temp_table %>%
+  filter(Utility=="Total") %>%
+  write_csv("final_data/ny_lmi_total.csv")
+
+```
 
 
 # LIFT Solar

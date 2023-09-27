@@ -168,22 +168,34 @@ leaflet() %>%
 
 The table below shows that New Jersey has relatively limited geoqualification, less than 10% of the state population resides within a qualified census block group. 
 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 temp_table <- nj_geo_qual %>% 
   st_drop_geometry() %>%
-  mutate(Geoqualified = case_when(
-    geo_tag == 1 ~ "Yes",
-    TRUE ~ "No"
-  )) %>%
-  group_by(Geoqualified) %>%
+  mutate(var = 1) %>%
+  group_by(var) %>%
+  summarize(Population = sum(total_pop[geo_tag==1])) %>%
+  mutate(Percentage = Population/sum(nj_geo_qual$total_pop)) %>%
+  select(Population, Percentage)
+  
 
-  summarize(Population = sum(total_pop)) %>%
-  adorn_totals("row")
+datatable(temp_table, caption = "California Geoqualified Population") %>%
+    formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
+    formatPercentage('Percentage',digit=2) 
 
 
-datatable(temp_table, caption = "New Jersey Geoqualified Population") %>%
-    formatCurrency('Population',currency = "", interval = 3, digits = 0, mark = ",") 
+```
+
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+temp_table %>%
+#  filter(Geoqualified=="Yes") %>%
+  write_csv("final_data/nj_geo_total.csv")
 
 ```
 
@@ -294,29 +306,9 @@ leaflet() %>%
 
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 
 
-
-
-temp_util <- st_transform(temp_util, st_crs(add_geo))
-
-temp_table <- add_geo %>% 
-  st_point_on_surface() %>%
-  st_make_valid() %>%
-  st_join(temp_util %>% select(Utility = new_name)) %>%
-  st_drop_geometry() %>%
-  group_by(Utility) %>%
-  summarize(LMI_Pop = sum(AMI_80))%>%
-  adorn_totals("row")
-
-
-datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
-    formatCurrency('LMI_Pop',currency = "", interval = 3, digits = 0, mark = ",") 
-
-
-```
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -408,7 +400,7 @@ map <- leaflet() %>%
               color="black",
               dashArray="3",
               fillOpacity=0,
-              popup=paste("Utility Zone: ", temp_util$comp_short)
+              popup=paste("Utility Zone: ", temp_util$new_name)
   ) %>%
   
   addPolygons(
@@ -509,4 +501,47 @@ map %>%
 ```
 
 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+total_nj_tracts <- st_transform(total_nj_tracts, st_crs(temp_util)) %>%
+  st_make_valid()
+
+
+temp_table <- total_nj_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(`80% AMI` = sum(AMI_80),
+            SNAP = sum(snap_hh),
+            `Total Pop` = sum(total_pop))%>%
+  adorn_totals("row")
+
+
+datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
+    formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") 
+
+
+
+
+```
+
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+temp_table %>%
+  filter(Utility=="Total") %>%
+  write_csv("final_data/nj_lmi_total.csv")
+
+
+```
 

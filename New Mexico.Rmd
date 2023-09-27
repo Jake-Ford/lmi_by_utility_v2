@@ -205,7 +205,8 @@ temp <- total_nm_tracts %>%
             `Medicaid` = sum(medicaid_pop),
             `SNAP HH` = sum(snap_hh),
             `Total Population` = sum(total_pop)) %>%
-  arrange(desc(`Pop under 80 AMI`)) 
+  arrange(desc(`Pop under 80 AMI`)) %>%
+  adorn_totals("row")
 
 datatable(temp, caption = "New Mexico, Sources: ACS 2019 and HUD CHAS")%>%
   formatCurrency('Pop under 80 AMI',currency = "", interval = 3, mark = ",", digits = 0) %>%
@@ -217,7 +218,20 @@ datatable(temp, caption = "New Mexico, Sources: ACS 2019 and HUD CHAS")%>%
 
 
 
+
 ```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+temp %>%
+  filter(Name=="Total") %>%
+  write_csv("final_data/nm_lmi_total.csv")
+
+
+```
+
+
 
 
 The map shows the census tracts loaded with the LMI qualification methods by utility zone coverage. 

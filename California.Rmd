@@ -305,6 +305,20 @@ datatable(temp_table, caption = "California Geoqualified Population by Utiliy Zo
 
 ```
 
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+temp_table %>%
+  filter(Utility=="Total") %>%
+  write_csv("final_data/ca_geo_total.csv")
+
+
+```
+
+
+
+
 # LMI Qualifications
 
 For California's NVBT program, we consider the following proxies for LMI qualifications:
@@ -440,6 +454,18 @@ datatable(temp_table, caption = "California LMI Population by Utility") %>%
 
 
 ```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+temp_table %>%
+  filter(Utility=="Total") %>%
+  write_csv("final_data/ca_lmi_total.csv")
+
+
+```
+
 
 
 # LIFT Solar
