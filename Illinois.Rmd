@@ -686,9 +686,11 @@ map %>%
 
 # Parcel Identification
 
-Using Cook County's Commerical data [database](https://dev.socrata.com/foundry/datacatalog.cookcountyil.gov/csik-bsws), we pull all 2022 values for completeness. Using the property rate [codes](https://www.lincolninst.edu/sites/default/files/gwipp/upload/sources/Illinois/2015/IL_Cook_County%20_class_code_by_County_Assessor_Dec_22_2010.PDF) from the Assessor's Office, we arrive at total non-residential (i.e. commercial) parcels. Note this data is only available for Cook County. 
+The below is a sample application of integrating parcel data into this geospatial analysis. Using Cook County's Commerical data [database](https://dev.socrata.com/foundry/datacatalog.cookcountyil.gov/csik-bsws), we pull all 2022 values for completeness. Using the property rate [codes](https://www.lincolninst.edu/sites/default/files/gwipp/upload/sources/Illinois/2015/IL_Cook_County%20_class_code_by_County_Assessor_Dec_22_2010.PDF) from the Assessor's Office, we arrive at total non-residential (i.e. commercial) parcels. Note this data is only available for Cook County. 
 
-We tag the commercial parcels to qualified census tracts by both Engie and SFA. 77.6% of commercial parcels in Cook County are qualified by Engie, whereas 64.2% are qualified by SFA (combined method). The map below shows a sample of 10,000 commerical parcels tagged by either Engie or SFA and their relative locaiton. 
+We tag the commercial parcels to qualified census tracts by both Engie and SFA ("Engie Parcels" and "SFA Parcels"). As an example application, we filter down to non-profit commercial parcels, ("NFP Engie Parcels" and "NFP SFA Parcels"). 
+
+77.6% of commercial parcels in Cook County are qualified by Engie, whereas 64.2% are qualified by SFA (combined method). The map below shows a sample of 10,000 commercial parcels tagged by either Engie or SFA and their relative location. 
 
 
 
@@ -1199,12 +1201,12 @@ non_profit_parcels <- non_profit_parcels %>%
 
 
 
-
 pal <- colorFactor(palette = c("red", "darkgreen"),  cook_parcels$engie_tag)
 
 leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
-  
+  setView(lng=-87.63216363068541, lat =41.88422217970713, zoom=09) %>%
+
   #non profit
     addCircles(data=non_profit_parcels,
                    group="NFP Engie Parcels",
