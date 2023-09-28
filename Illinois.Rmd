@@ -8,7 +8,7 @@ output:
 
 # Overview
 
-There two programs to consider in Illinois for LMI population estimation: Solar for All (SFA) and the Microsoft Engie. Each program has unique geo- and LMI qualifications. 
+There are two programs to consider in Illinois: Solar for All (SFA) and the Microsoft Engie. Each program has unique geo- and LMI qualifications. 
 
 ```{r setup, include=FALSE}
 
