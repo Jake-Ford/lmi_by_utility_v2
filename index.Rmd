@@ -7,6 +7,18 @@ output:
 ---
 
 
+```{r setup, include=FALSE}
+
+source('helper_functions.R')
+load_packages()
+
+
+
+```
+
+
+
+
 # Overview
 
 This document summarizes the total addressable markets within each state Solstice operates or plans to explore. 
@@ -67,21 +79,55 @@ il_lmi <- read_csv("final_data/il_lmi_total.csv")%>%
   mutate(State = "Illinois") %>%
   select(-Utility)
 
-il_total <- cbind(il__geo, il_lmi)
+il_total_sfa <- cbind(il_geo_sfa, il_lmi)
+il_total_sfa$State <- "Illinois SFA"
+
+il_total_engie <- cbind(il_geo_engie, il_lmi)
+il_total_engie$State <- "Illinois Engie"
 
 
 nj_lmi <- read_csv("final_data/nj_lmi_total.csv")%>%
   mutate(State = "New Jersey") %>%
   select(-Utility)
 
+nj_total <- cbind(nj_geo, nj_lmi)
+
+
+
 ny_lmi <- read_csv("final_data/ny_lmi_total.csv")%>%
   mutate(State = "New York") %>%
   select(-Utility)
 
+ny_total <- cbind(ny_geo, ny_lmi)
 
-datatable(temp_geo, caption = "Solstice State Markets Geoqualified Population") %>%
-    formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
-    formatPercentage('Percentage',digit=2) 
+
+nm_lmi <- read_csv("final_data/nm_lmi_total.csv") %>%
+  mutate(State = "New Mexico") %>%
+  rename(`Total Pop` = `Total Population`,
+         `SNAP` = `SNAP HH`) %>%
+  select(-Name, -Medicaid)
+
+nm_lmi$Population <- NA
+nm_lmi$Percentage <- NA
+
+cols <- names(nm_lmi)
+nm_lmi <- nm_lmi[, c("Population", "Percentage", cols[!(cols %in% c("Population", "Percentage"))])]
+
+
+temp_geo <- rbind(cal_total, il_total_sfa,
+                  il_total_engie, nj_total, ny_total, nm_lmi)
+
+temp_geo <- temp_geo[, c("State", setdiff(names(temp_geo), "State"))]
+
+temp_geo <- temp_geo %>% 
+  rename(`Geo-Qual Population` = Population)
+
+datatable(temp_geo, caption = "Solstice State Markets Geo- and LMI Populations") %>%
+    formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('Geo-Qual Population',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%   formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatPercentage('Percentage', digits=2)
 
 
 ```

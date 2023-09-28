@@ -201,15 +201,17 @@ temp <- total_nm_tracts %>%
   st_drop_geometry() %>%
   group_by(Name = NAME) %>%
   filter(!is.na(Name)) %>%
-  summarize(`Pop under 80 AMI` = sum(AMI_80),
+  summarize(`80% AMI` = sum(AMI_80),
+            `100% AMI` = sum(AMI_100),
             `Medicaid` = sum(medicaid_pop),
             `SNAP HH` = sum(snap_hh),
             `Total Population` = sum(total_pop)) %>%
-  arrange(desc(`Pop under 80 AMI`)) %>%
+  arrange(desc(`80% AMI`)) %>%
   adorn_totals("row")
 
 datatable(temp, caption = "New Mexico, Sources: ACS 2019 and HUD CHAS")%>%
-  formatCurrency('Pop under 80 AMI',currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
   formatCurrency('Medicaid',currency = "", interval = 3, mark = ",", digits = 0) %>%
   formatCurrency('SNAP HH',currency = "", interval = 3, mark = ",", digits = 0) %>%
   formatCurrency('Total Population',currency = "", interval = 3, mark = ",", digits = 0) 

@@ -440,6 +440,7 @@ temp_table <- total_ca_tracts %>%
   st_drop_geometry() %>%
   group_by(Utility) %>%
   summarize(`80% AMI` = sum(AMI_80),
+            `100% AMI` = sum(AMI_100),
             SNAP = sum(snap_hh),
             `Total Pop` = sum(total_pop))%>%
   adorn_totals("row")
@@ -447,6 +448,7 @@ temp_table <- total_ca_tracts %>%
 
 datatable(temp_table, caption = "California LMI Population by Utility") %>%
     formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+    formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
     formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
     formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") 
 
