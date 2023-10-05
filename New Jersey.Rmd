@@ -56,7 +56,7 @@ nj_tracts_loaded <- get_acs(
                 "B17026_004",
                 "B17026_003",
                 "B17026_002",
-                "B17026_001",
+                "B25002_002",
                 
                 "S1601_C01_001E",
                 "S1601_C01_002E",
@@ -80,7 +80,7 @@ geometry=TRUE
   summarize(fams_under_200fpl = estimate[variable=="B17026_009"]+estimate[variable=="B17026_008"]+estimate[variable=="B17026_007"]+
                                 estimate[variable=="B17026_006"]+estimate[variable=="B17026_005"]+estimate[variable=="B17026_004"]+
                                 estimate[variable=="B17026_003"]+estimate[variable=="B17026_002"],
-            fams_total = estimate[variable=="B17026_001"],
+            fams_total = estimate[variable=="B25002_002"],
             
             total_lang_pop = estimate[variable=="S1601_C01_001"],
             english = estimate[variable=="S1601_C01_002"],
@@ -332,7 +332,8 @@ We use HUD data that summarizes the total number of households living at or unde
 nj_tracts <- get_acs(
   geography="tract", 
   state="NJ",
-  variables=c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002"
+  variables=c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002",
+              "Total_HH" = "B25002_002"
               
               ),
   year=2019, 
@@ -340,7 +341,8 @@ nj_tracts <- get_acs(
   group_by(GEOID) %>%
   summarize(total_pop = estimate[variable=="Total_Pop"],
             snap_hh = estimate[variable=="snap_hh"],
-            snap_pop = estimate[variable=="snap_pop"])
+            snap_pop = estimate[variable=="snap_pop"],
+            total_hh = estimate[variable=="Total_HH"])
 
 
 
@@ -356,7 +358,8 @@ total_nj_tracts <- cbind(add_geo, nj_tracts)
 
 ## Low and Moderate Income
 
-The table below shows 80% and 100% LMI households, SNAP households and total population by each utility zone. 
+The table below shows three different proxies for LMI households in New Jersey: 80% and 100% AMI and SNAP receipient households. Totals for households and popualtion are included for context. Note, the three LMI proxies are not mutually exclusive. 
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -372,18 +375,20 @@ temp_table <- temp_tracts %>%
   st_join(temp_util %>% select(Utility = new_name)) %>%
   st_drop_geometry() %>%
   group_by(Utility) %>%
-  summarize(`80% AMI` = sum(AMI_80),
-            `100% AMI` = sum(AMI_100),
-            SNAP = sum(snap_hh),
+  summarize(`80% AMI HHs` = sum(AMI_80),
+            `100% AMI HHs` = sum(AMI_100),
+            `SNAP HHs` = sum(snap_hh),
+            `Total HHs` = sum(total_hh),
             `Total Pop` = sum(total_pop))%>%
   adorn_totals("row")
 
 
 
 datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
-  formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>% 
-  formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('80% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('100% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('SNAP HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
   formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") #%>%
   # formatCurrency('HH <200% FPL',currency = "", interval = 3, digits = 0, mark = ",") %>% 
   # formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 

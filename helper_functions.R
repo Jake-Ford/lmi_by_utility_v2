@@ -64,7 +64,12 @@ load_chas <- function()
     
     mutate(
       
-      AMI_80 = T11_est4+T11_est5+T11_est6+T11_est7+T11_est9+T11_est10+T11_est18+T11_est19+T11_est20+T11_est21+T11_est23+T11_est24+T11_est32+T11_est33+T11_est34+T11_est35+T11_est37+T11_est38+T11_est47+T11_est48+T11_est49+T11_est50+T11_est52+T11_est53+T11_est61+T11_est62+T11_est63+T11_est64+T11_est66+T11_est67+T11_est75+T11_est76+T11_est77+T11_est78+T11_est80+T11_est81,
+      AMI_30 = T11_est47 +T11_est48+T11_est61+T11_est62+T11_est75+T11_est76,
+      AMI_50 = T11_est47 +T11_est48+T11_est49+T11_est50+T11_est61+T11_est62+T11_est63+T11_est64+T11_est75+T11_est76+T11_est77+T11_est78,
+      
+      
+      AMI_80 = T11_est4+T11_est5+T11_est6+T11_est7+T11_est9+T11_est10+T11_est18+T11_est19+T11_est20+T11_est21+T11_est23+T11_est24+T11_est32+T11_est33+T11_est34+T11_est35+T11_est37+T11_est38+T11_est47+T11_est48+T11_est49+
+        T11_est50+T11_est52+T11_est53+T11_est61+T11_est62+T11_est63+T11_est64+T11_est66+T11_est67+T11_est75+T11_est76+T11_est77+T11_est78+T11_est80+T11_est81,
       
       AMI_Over_80 = 
         T11_est11+
