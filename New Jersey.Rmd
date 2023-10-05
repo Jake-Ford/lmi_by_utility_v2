@@ -582,7 +582,7 @@ leaflet() %>%
 
 ## Language
 
-For Language, we use the summary table [S1602](https://data.census.gov/table/ACSST1Y2022.S1601?q=S1601&g=040XX00US34,34$1400000) for language spoken at home for the number of households over 5 years of age. We use the default categories from the summary table. 
+For Language, we use the summary table [S1602](https://data.census.gov/table?q=S1602&g=040XX00US34,34$1400000) for language spoken at home for the number of households over 5 years of age. We use the default categories from the summary table. 
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
