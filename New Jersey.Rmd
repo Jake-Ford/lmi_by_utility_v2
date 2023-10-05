@@ -40,7 +40,63 @@ nj_geo_qual <- st_read("data/NJ/hud_80pct_80ami/Low_to_Moderate_Income_Populatio
 ```
 
 
+S1601_C01_001E - total pop > 5 years
+S1601_C01_002E - speak only english
+S1601_C01_004E - speak spanish
+S1601_C01_008E - indo-european languages
+S1601_C01_012E - asian/pacific islander
+S1601_C01_016E - other languages
 
+
+ nj_tracts_data <- get_acs(
+     geography = "tract",
+     state = "NJ",
+     table = "S1601",
+     year = 2021,
+     geometry = TRUE
+ )
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+#acs_vars <- load_variables(2021, "acs5")
+
+
+nj_tracts_loaded <- get_acs(
+  geography="tract",
+  state = "NJ",
+  variables = c("B17026_009",
+                "B17026_008",
+                "B17026_007",
+                "B17026_006",
+                "B17026_005",
+                "B17026_004",
+                "B17026_003",
+                "B17026_002",
+                "B17026_001",
+                
+                "S1601_C01_001E",
+                "S1601_C01_002E",
+                "S1601_C01_004E",
+                "S1601_C01_008E",
+                "S1601_C01_012E",
+                "S1601_C01_016E"),
+year = 2019,
+geometry=TRUE
+) %>%
+  group_by(GEOID) %>%
+  summarize(fams_under_200fpl = estimate[variable=="B17026_009"]+estimate[variable=="B17026_008"]+estimate[variable=="B17026_007"]+
+                                estimate[variable=="B17026_006"]+estimate[variable=="B17026_005"]+estimate[variable=="B17026_004"]+
+                                estimate[variable=="B17026_003"]+estimate[variable=="B17026_002"],
+            fams_total = estimate[variable=="B17026_001"],
+            
+            total_lang_pop = estimate[variable=="S1601_C01_001"],
+            english = estimate[variable=="S1601_C01_002"],
+            spanish = estimate[variable=="S1601_C01_004"],
+            indo_euro = estimate[variable=="S1601_C01_008"],
+            asian_pacific = estimate[variable=="S1601_C01_012"],
+            other_lang = estimate[variable=="S1601_C01_016"])
+
+
+
+```
 
 
 
@@ -60,6 +116,17 @@ get_tracts <- get_acs(
 
 
 ```
+
+  variables=c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002"
+              
+              ),
+  year=2019, 
+  geometry=TRUE) %>%
+  group_by(GEOID) %>%
+  summarize(total_pop = estimate[variable=="Total_Pop"],
+            snap_hh = estimate[variable=="snap_hh"],
+            snap_pop = estimate[variable=="snap_pop"])
+
 
 
 
@@ -336,6 +403,271 @@ total_nj_tracts <- cbind(add_geo, nj_tracts)
 ```
 
 
+
+## Low and Moderate Income
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+temp_tracts <- st_transform(total_nj_tracts, st_crs(temp_util)) %>%
+  st_make_valid()
+
+
+temp_table <- temp_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(`80% AMI` = sum(AMI_80),
+            `100% AMI` = sum(AMI_100),
+            SNAP = sum(snap_hh),
+            `Total Pop` = sum(total_pop))%>%
+  adorn_totals("row")
+
+
+
+datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
+  formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") #%>%
+  # formatCurrency('HH <200% FPL',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  # formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  # formatPercentage('Percent <200% FPL', digits = 2) 
+
+
+
+
+
+```
+
+
+## Low Income
+
+Low income households are defined by households earning up to 200% of the federal poverty line. The table below shows the number of households in New Jersey by Utility Zone. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+temp_tracts <- st_transform(nj_tracts_loaded, st_crs(temp_util)) %>%
+  st_make_valid()
+
+
+temp_loaded_table <- temp_tracts %>%
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(
+    `HH <200% FPL` = sum(fams_under_200fpl),
+    `Total HHs` = sum(fams_total)
+  )%>%
+  adorn_totals("row") %>%
+    mutate(`Percent <200% FPL` = `HH <200% FPL` /`Total HHs`)  
+
+
+
+datatable(temp_loaded_table, caption = "New Jersey Low Income Population by Utility") %>%
+  # formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  # formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  # formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  # formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('HH <200% FPL',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatPercentage('Percent <200% FPL', digits = 2) 
+
+
+
+
+```
+
+## Language
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+temp_tracts <- st_transform(nj_tracts_loaded, st_crs(temp_util)) %>%
+  st_make_valid()
+
+
+temp_loaded_table <- temp_tracts %>%
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(
+    `Total Population` = sum(total_lang_pop),
+    English = sum(english),
+    Spanish = sum(spanish),
+    `Indo-European` = sum(indo_euro),
+    `Asian-Pacific` = sum(asian_pacific),
+    Other = sum(other_lang)
+  )%>%
+  adorn_totals("row") 
+
+
+
+datatable(temp_loaded_table, caption = "New Jersey Languages by Utility for Population over 5 Years Old") %>%
+  formatCurrency('Total Population',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('English',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('Spanish',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('Indo-European',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('Asian-Pacific',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('Other',currency = "", interval = 3, digits = 0, mark = ",") 
+
+
+
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+nj_tracts_loaded <- nj_tracts_loaded[!st_geometry_type(nj_tracts_loaded) %in% c("GEOMETRYCOLLECTION"), ]
+
+nj_tracts_loaded <- st_transform(nj_tracts_loaded, 4326)
+
+pal <- colorNumeric(
+  palette = "Oranges",
+ # reverse=TRUE,
+  domain = nj_tracts_loaded$english)
+
+pal1 <- colorNumeric(
+  palette = "Purples",
+ # reverse=TRUE,
+  domain = nj_tracts_loaded$spanish)
+
+pal2 <- colorNumeric(
+  palette = "Blues",
+ # reverse=TRUE,
+  domain = nj_tracts_loaded$indo_euro)
+
+pal3 <- colorNumeric(
+  palette = "Reds",
+ # reverse=TRUE,
+  domain = nj_tracts_loaded$asian_pacific)
+
+pal4 <- colorNumeric(
+  palette = "Greens",
+ # reverse=TRUE,
+  domain = nj_tracts_loaded$other_lang)
+
+
+
+
+
+map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data=temp_util,
+              group="Utility Zones",
+              stroke=TRUE,
+              color="black",
+              dashArray="3",
+              fillOpacity=0,
+              popup=paste("Utility Zone: ", temp_util$new_name)) %>%
+
+    #English
+  addPolygons( data = nj_tracts_loaded,
+    group="English", 
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal(english),
+    popup=paste("GEOID: ", nj_tracts_loaded$GEOID, "<br>",
+                "English: ", nj_tracts_loaded$english, "<br>",
+                "Spanish: ", nj_tracts_loaded$spanish,"<br>",
+                "Indo-European: ", nj_tracts_loaded$indo_euro,"<br>",
+                "Asian-Pacific: ", nj_tracts_loaded$asian_pacific,"<br>",
+                "Other: ", nj_tracts_loaded$other_lang)
+
+  ) %>%
+  
+      #Spanish
+  addPolygons( data = nj_tracts_loaded,
+    group="Spanish", 
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal1(spanish),
+    popup=paste("GEOID: ", nj_tracts_loaded$GEOID, "<br>",
+                "English: ", nj_tracts_loaded$english, "<br>",
+                "Spanish: ", nj_tracts_loaded$spanish,"<br>",
+                "Indo-European: ", nj_tracts_loaded$indo_euro,"<br>",
+                "Asian-Pacific: ", nj_tracts_loaded$asian_pacific,"<br>",
+                "Other: ", nj_tracts_loaded$other_lang)
+
+  ) %>%
+
+  
+      #indo_euro
+  addPolygons( data = nj_tracts_loaded,
+    group="Indo-European", 
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal2(indo_euro),
+    popup=paste("GEOID: ", nj_tracts_loaded$GEOID, "<br>",
+                "English: ", nj_tracts_loaded$english, "<br>",
+                "Spanish: ", nj_tracts_loaded$spanish,"<br>",
+                "Indo-European: ", nj_tracts_loaded$indo_euro,"<br>",
+                "Asian-Pacific: ", nj_tracts_loaded$asian_pacific,"<br>",
+                "Other: ", nj_tracts_loaded$other_lang)
+  ) %>%
+
+  
+      #asian-pacific
+  addPolygons( data = nj_tracts_loaded,
+    group="Asian-Pacific", 
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal3(asian_pacific),
+    popup=paste("GEOID: ", nj_tracts_loaded$GEOID, "<br>",
+                "English: ", nj_tracts_loaded$english, "<br>",
+                "Spanish: ", nj_tracts_loaded$spanish,"<br>",
+                "Indo-European: ", nj_tracts_loaded$indo_euro,"<br>",
+                "Asian-Pacific: ", nj_tracts_loaded$asian_pacific,"<br>",
+                "Other: ", nj_tracts_loaded$other_lang)
+  ) %>%
+
+  
+      #Other
+  addPolygons( data = nj_tracts_loaded,
+    group="Other", 
+    stroke=FALSE,
+    smoothFactor=0.2,
+    fillOpacity=0.85,
+    color=~pal4(other_lang),
+    popup=paste("GEOID: ", nj_tracts_loaded$GEOID, "<br>",
+                "English: ", nj_tracts_loaded$english, "<br>",
+                "Spanish: ", nj_tracts_loaded$spanish,"<br>",
+                "Indo-European: ", nj_tracts_loaded$indo_euro,"<br>",
+                "Asian-Pacific: ", nj_tracts_loaded$asian_pacific,"<br>",
+                "Other: ", nj_tracts_loaded$other_lang)
+    
+  ) %>%
+  
+    addLayersControl(
+    baseGroups=c( "English", "Spanish", "Indo-European", "Asian-Pacific", "Other"),  
+
+  )
+
+
+map
+
+```
+
+
+
+
+
+
 # LIFT Solar
 
 There are 145 community solar projects in New Jersey according to the LIFT solar database. 
@@ -501,37 +833,6 @@ map %>%
 ```
 
 
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-
-
-
-total_nj_tracts <- st_transform(total_nj_tracts, st_crs(temp_util)) %>%
-  st_make_valid()
-
-
-temp_table <- total_nj_tracts %>% 
-  st_point_on_surface() %>%
-  st_make_valid() %>%
-  st_join(temp_util %>% select(Utility = new_name)) %>%
-  st_drop_geometry() %>%
-  group_by(Utility) %>%
-  summarize(`80% AMI` = sum(AMI_80),
-            `100% AMI` = sum(AMI_100),
-            SNAP = sum(snap_hh),
-            `Total Pop` = sum(total_pop))%>%
-  adorn_totals("row")
-
-
-datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
-    formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
-    formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>% formatCurrency('SNAP',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") 
-
-
-
-
-```
 
 
 
