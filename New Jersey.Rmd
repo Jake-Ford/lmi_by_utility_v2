@@ -138,7 +138,8 @@ chas_df <- load_chas() %>%
     TRUE ~ "Other"
   )) %>%
   filter(State_Name == "New Jersey") %>%
-  mutate(AMI_80_inclusive = AMI_80) %>%
+  mutate(AMI_80_inclusive = AMI_80,
+         AMI_100_inclusive = AMI_100) %>%
   mutate(AMI_100 = AMI_100 - AMI_80,
          AMI_80 = AMI_80 - AMI_50,
          AMI_50 = AMI_50 - AMI_30)
@@ -362,9 +363,9 @@ total_nj_tracts <- cbind(add_geo, nj_tracts)
 
 ## Low and Moderate Income
 
-The table below shows different proxies for LMI households in New Jersey: <30%, 30-50%, 50-80%, 80-100% AMI households. Totals for households and population are included for context. 
+The table below shows different proxies for LMI households in New Jersey: <30%, 30-50%, 50-80%, 80-100% AMI households. The first table shows these totals by utility zones. Totals for households and population are included for context. 
 
-A common aggregation for low income proxy is below 50% AMI, whereas medium income is deinfed as 50-100% AMI. We use these to combine into Low and Moderate income categories below. 
+The second table shows a common aggregation for Low and Moderate income, as well as a combined LMI definition. A proxy for low income is households earning below 50% AMI, whereas medium income is defined as 50-100% AMI. Combining these groups (households earning up to 100% AMI) is a common definition for LMI households.  
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -382,47 +383,71 @@ temp_table <- temp_tracts %>%
   st_drop_geometry() %>%
   group_by(Utility) %>%
   summarize(
-            `<30% AMI HHs` = sum(AMI_30),
-            `30-50% AMI HHs` = sum(AMI_50),
-            `Total Low Income` = sum(AMI_30) + sum(AMI_50),
-            `50-80% AMI HHs` = sum(AMI_80),
-            `80-100% AMI HHs` = sum(AMI_100),
+            `<30%` = sum(AMI_30),
+            `30-50%` = sum(AMI_50),
+            `50-80%` = sum(AMI_80),
+            `80-100%` = sum(AMI_100),
           #  `100% AMI HHs` = sum(AMI_100),
            # `Total Under 80%` = sum(AMI_80_inclusive),
-            `Total Moderate Income` = sum(AMI_80) + sum(AMI_100),
-            
+
          #   `SNAP HHs` = sum(snap_hh),
-            `Total HHs` = sum(total_hh),
-            `Total Pop` = sum(total_pop))%>%
+            `State Total HHs` = sum(total_hh),
+            `State Total Pop` = sum(total_pop))%>%
    adorn_totals("row") 
 
 
 
-datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
-  formatCurrency('<30% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('30-50% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('Total Low Income',currency = "", interval = 3, digits = 0, mark = ",") %>%
+datatable(temp_table, caption = "New Jersey Households by AMI Percentage by Utility") %>%
+  formatCurrency('<30%',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('30-50%',currency = "", interval = 3, digits = 0, mark = ",") %>%
 
-  formatCurrency('50-80% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('80-100% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
-    formatCurrency('Total Moderate Income',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('50-80%',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('80-100%',currency = "", interval = 3, digits = 0, mark = ",") %>% 
 
  # formatCurrency('Total Under 80%',currency = "", interval = 3, digits = 0, mark = ",") %>% 
 #  formatCurrency('SNAP HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") #%>%
+  formatCurrency('State Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('State Total Pop',currency = "", interval = 3, digits = 0, mark = ",") #%>%
+  # formatCurrency('HH <200% FPL',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  # formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  # formatPercentage('Percent <200% FPL', digits = 2) 
+
+temp_table <- temp_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(
+            `Low Income` = sum(AMI_30) + sum(AMI_50),
+          #  `100% AMI HHs` = sum(AMI_100),
+           # `Total Under 80%` = sum(AMI_80_inclusive),
+            `Moderate Income` = sum(AMI_80) + sum(AMI_100),
+            `LMI Total` = sum(AMI_30) + sum(AMI_50)+sum(AMI_80) + sum(AMI_100),
+         #   `SNAP HHs` = sum(snap_hh),
+            `State Total HHs` = sum(total_hh),
+            `State Total Pop` = sum(total_pop))%>%
+   adorn_totals("row") 
+
+datatable(temp_table, caption = "New Jersey Households by LMI Status by Utility") %>%
+  formatCurrency('Low Income',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('Moderate Income',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('LMI Total',currency = "", interval = 3, digits = 0, mark = ",") %>%
+
+ # formatCurrency('Total Under 80%',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+#  formatCurrency('SNAP HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('State Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('State Total Pop',currency = "", interval = 3, digits = 0, mark = ",") #%>%
   # formatCurrency('HH <200% FPL',currency = "", interval = 3, digits = 0, mark = ",") %>% 
   # formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
   # formatPercentage('Percent <200% FPL', digits = 2) 
 
 
 
-
-
 ```
 
 
-
+The below map shows the distribution of LMI households in New Jersey, using the combined up 100% AMI definition
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -431,7 +456,7 @@ datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
 
 pal5 <- colorNumeric(
   palette=c("Oranges"),
-  domain=add_geo$AMI_80_inclusive
+  domain=add_geo$AMI_100_inclusive
 )
 
 
@@ -440,13 +465,13 @@ leaflet() %>%
   addPolygons(data=add_geo,
               group="LMI",
              # stroke = TRUE,
-              color = ~pal5(add_geo$AMI_80_inclusive),
+              color = ~pal5(add_geo$AMI_100_inclusive),
               fillOpacity=0.75,
               popup=paste("Census Block Group: ", add_geo$GEOID, "<br>",
-                          "Population < 80% AMI: ", add_geo$AMI_80_inclusive)) %>%
+                          "Population < 80% AMI: ", add_geo$AMI_100_inclusive)) %>%
   addLegend(position="bottomright",
             pal=pal5,
-            values=add_geo$AMI_80_inclusive,
+            values=add_geo$AMI_100_inclusive,
             title="NJ LMI Population")  %>%
   
     addPolygons(data=temp_util,
