@@ -137,7 +137,11 @@ chas_df <- load_chas() %>%
     state == 06 ~ "California",
     TRUE ~ "Other"
   )) %>%
-  filter(State_Name == "New Jersey")
+  filter(State_Name == "New Jersey") %>%
+  mutate(AMI_80_inclusive = AMI_80) %>%
+  mutate(AMI_100 = AMI_100 - AMI_80,
+         AMI_80 = AMI_80 - AMI_50,
+         AMI_50 = AMI_50 - AMI_30)
 
 
 
@@ -358,7 +362,9 @@ total_nj_tracts <- cbind(add_geo, nj_tracts)
 
 ## Low and Moderate Income
 
-The table below shows three different proxies for LMI households in New Jersey: 80% and 100% AMI and SNAP receipient households. Totals for households and popualtion are included for context. Note, the three LMI proxies are not mutually exclusive. 
+The table below shows different proxies for LMI households in New Jersey: <30%, 30-50%, 50-80%, 80-100% AMI households. Totals for households and population are included for context. 
+
+A common aggregation for low income proxy is below 50% AMI, whereas medium income is deinfed as 50-100% AMI. We use these to combine into Low and Moderate income categories below. 
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -375,19 +381,34 @@ temp_table <- temp_tracts %>%
   st_join(temp_util %>% select(Utility = new_name)) %>%
   st_drop_geometry() %>%
   group_by(Utility) %>%
-  summarize(`80% AMI HHs` = sum(AMI_80),
-            `100% AMI HHs` = sum(AMI_100),
-            `SNAP HHs` = sum(snap_hh),
+  summarize(
+            `<30% AMI HHs` = sum(AMI_30),
+            `30-50% AMI HHs` = sum(AMI_50),
+            `Total Low Income` = sum(AMI_30) + sum(AMI_50),
+            `50-80% AMI HHs` = sum(AMI_80),
+            `80-100% AMI HHs` = sum(AMI_100),
+          #  `100% AMI HHs` = sum(AMI_100),
+           # `Total Under 80%` = sum(AMI_80_inclusive),
+            `Total Moderate Income` = sum(AMI_80) + sum(AMI_100),
+            
+         #   `SNAP HHs` = sum(snap_hh),
             `Total HHs` = sum(total_hh),
             `Total Pop` = sum(total_pop))%>%
-  adorn_totals("row")
+   adorn_totals("row") 
 
 
 
 datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
-  formatCurrency('80% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
-  formatCurrency('100% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
-  formatCurrency('SNAP HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('<30% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('30-50% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('Total Low Income',currency = "", interval = 3, digits = 0, mark = ",") %>%
+
+  formatCurrency('50-80% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('80-100% AMI HHs',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+    formatCurrency('Total Moderate Income',currency = "", interval = 3, digits = 0, mark = ",") %>%
+
+ # formatCurrency('Total Under 80%',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+#  formatCurrency('SNAP HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
   formatCurrency('Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
   formatCurrency('Total Pop',currency = "", interval = 3, digits = 0, mark = ",") #%>%
   # formatCurrency('HH <200% FPL',currency = "", interval = 3, digits = 0, mark = ",") %>% 
@@ -410,7 +431,7 @@ datatable(temp_table, caption = "New Jersey LMI Population by Utility") %>%
 
 pal5 <- colorNumeric(
   palette=c("Oranges"),
-  domain=add_geo$AMI_80
+  domain=add_geo$AMI_80_inclusive
 )
 
 
@@ -419,13 +440,13 @@ leaflet() %>%
   addPolygons(data=add_geo,
               group="LMI",
              # stroke = TRUE,
-              color = ~pal5(add_geo$AMI_80),
+              color = ~pal5(add_geo$AMI_80_inclusive),
               fillOpacity=0.75,
               popup=paste("Census Block Group: ", add_geo$GEOID, "<br>",
-                          "Population < 80% AMI: ", add_geo$AMI_80)) %>%
+                          "Population < 80% AMI: ", add_geo$AMI_80_inclusive)) %>%
   addLegend(position="bottomright",
             pal=pal5,
-            values=add_geo$AMI_80,
+            values=add_geo$AMI_80_inclusive,
             title="NJ LMI Population")  %>%
   
     addPolygons(data=temp_util,
@@ -448,7 +469,7 @@ leaflet() %>%
 
 ## Low Income
 
-Low income households are defined by households earning up to 200% of the federal poverty line. The table below shows the number of households in New Jersey by Utility Zone. 
+An alternative definition of Low income are households earning up to 200% of the federal poverty line. The table below shows the number of households in New Jersey by Utility Zone. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -921,7 +942,7 @@ pal_cap <- colorNumeric(
 pal <- colorNumeric(
   palette = "viridis",
  # reverse=TRUE,
-  domain = temp_df$AMI_80)
+  domain = temp_df$AMI_80_inclusive)
 
 pal2 <- colorNumeric(
   palette = "Purples",
@@ -956,15 +977,15 @@ map <- leaflet() %>%
     stroke=FALSE,
     smoothFactor=0.2,
     fillOpacity=0.85,
-    color=~pal(AMI_80),
+    color=~pal(AMI_80_inclusive),
     popup=paste("Tract: ", temp_df$geoid, "<br>", 
-                "HHs at 80% AMI: ", temp_df$AMI_80)
+                "HHs at 80% AMI: ", temp_df$AMI_80_inclusive)
   ) %>%
 
   addLegend("bottomleft",
             group="80% AMI",  # This should be consistent with the group name in the addPolygons function
             pal = pal,
-            values = temp_df$AMI_80,
+            values = temp_df$AMI_80_inclusive,
             title="Number of HHs at 80% AMI"
   ) %>%
   

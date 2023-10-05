@@ -169,7 +169,7 @@ load_chas <- function()
     #  Total_Pop = AMI_120 + AMI_Over_120
     ) %>%
     select(geoid, name, state=st, AMI_140_Pct, AMI_120_Pct, AMI_115_Pct,AMI_100_Pct,AMI_80_Pct,
-           AMI_140, AMI_120, AMI_115,AMI_100,AMI_80) %>%
+           AMI_140, AMI_120, AMI_115,AMI_100,AMI_80, AMI_50, AMI_30) %>%
     mutate(
       n_140 = case_when(
         AMI_140_Pct >= 0.5 ~ 1,
