@@ -36,6 +36,7 @@ nj_geo_qual <- st_read("data/NJ/hud_80pct_80ami/Low_to_Moderate_Income_Populatio
          )
          )
 
+toms_river_geo_zone <- st_read("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/New Jersey/Tom_River_Qualification_File.geojson")
   
 ```
 
@@ -311,7 +312,29 @@ datatable(temp_table, caption = "New Jersey Geoqualified Population by Utility")
 
 
 
+## Tom's River Geoqual
 
+There are two data sources that are combined for the geoqualification layer for Toms River:
+
+* Customers must be within the JCP&L utility zone, displayed here on the map
+* Customers must be within a township ([map](https://njogis-newjersey.opendata.arcgis.com/datasets/newjersey::municipal-boundaries-of-nj/explore?filters=eyJNVU5fTEFCRUwiOlsiVG9tcyBSaXZlciBUb3duc2hpcCIsIk1hbmNoZXN0ZXIgVG93bnNoaXAiLCJTb3V0aCBUb21zIFJpdmVyIEJvcm91Z2giLCJCZXJrZWxleSBUb3duc2hpcCIsIklzbGFuZCBIZWlnaHRzIEJvcm91Z2giLCJTZWFzaWRlIEhlaWdodHMgQm9yb3VnaCIsIkxhdmFsbGV0dGUgQm9yb3VnaCIsIkJyaWNrIFRvd25zaGlwIiwiTGFrZXdvb2QgVG93bnNoaXAiLCJKYWNrc29uIFRvd25zaGlwIl19&location=40.018126%2C-74.258297%2C11.00)) adjacent to Tom’s River, including:
+  * Lakewood
+  * Toms River
+  * Brick
+  * Jackson
+  * Manchester
+  * Berkeley
+  * S. Toms River
+  * Seaside Heights
+  * Lavallette
+  * Island Heights
+
+These two zones are intersected and combined into the below geojson file: 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+mapview(toms_river_geo_zone,layer.name = "Toms River Geoqualification Zone")
+```
 
 
 
@@ -1106,4 +1129,7 @@ temp_table %>%
 
 
 ```
+
+
+
 
