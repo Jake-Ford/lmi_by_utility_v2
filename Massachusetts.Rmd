@@ -43,6 +43,7 @@ temp_util <- st_read("utility_zones/MA/pubutil/TOWNS_POLY_V_ELEC.shp") %>%
     )
   )
 
+ma_ej_blocks <- st_read("data/MA/EJ_POLY.shp")
 
 
 ```
@@ -109,7 +110,23 @@ leaflet() %>%
 
 # Geoqualification
 
+The below map shows the qualified Environmental Justice (EJ) 2020 census block groups for Massachusetts. Note, the below represent block groups that are tagged with the presence of an EJ metric, and does not delineate between EJ classifications (Income, Minority, Language, combination of the three). 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# temp <- ma_ej_blocks %>%
+#   st_transform(st_crs(get_tracts))
+# 
+# 
+# st_write(temp, "/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/MA/MA_2020_EJ_Blocks.geojson", append=FALSE)
+
+mapview(ma_ej_blocks)
+```
+
 # LMI Qualificaiton
+
+
+
+
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
