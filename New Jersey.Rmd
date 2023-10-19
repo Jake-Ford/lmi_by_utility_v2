@@ -469,6 +469,38 @@ datatable(temp_table, caption = "New Jersey Households by LMI Status by Utility"
 ```
 
 
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# LMI write out - how many people are within 
+
+temp_table <- temp_tracts %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry() %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(
+    #`Geo-Qual Population` = sum()
+            `Pop under 80 AMI` = sum(AMI_80_inclusive),
+             `SNAP HH` = sum(snap_hh),
+            `Total Population` = sum(total_pop)) %>%
+  arrange(desc(`Pop under 80 AMI`)) %>%
+  adorn_totals("row")
+
+  
+
+datatable(temp_table, caption = "Interim Disadvantaged Communities (DAC) Population by Utiliy Zone") #%>%
+  # formatCurrency('Population',currency = "", interval = 3, mark = ",") %>%
+  # formatPercentage('Percentage', digits = 2)
+
+
+```
+
+
+
+
 The below map shows the distribution of LMI households in New Jersey, using the combined up 100% AMI definition
 
 

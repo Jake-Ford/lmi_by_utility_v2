@@ -92,6 +92,14 @@ nj_lmi <- read_csv("final_data/nj_lmi_total.csv")%>%
 
 nj_total <- cbind(nj_geo, nj_lmi)
 
+nj_total$`80% AMI` <- 1144376
+nj_total$`100% AMI` <- 1639804
+nj_total$SNAP <- 280379
+nj_total$`Total Pop` <- nj_total$`State Total Pop`
+
+nj_total <- nj_total %>%
+  select(Population, Percentage, `80% AMI`, `100% AMI`,
+         SNAP, `Total Pop`, State)
 
 
 ny_lmi <- read_csv("final_data/ny_lmi_total.csv")%>%
