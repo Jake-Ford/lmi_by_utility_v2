@@ -20,30 +20,42 @@ load_packages()
 # Overivew
 
 
-
-
+Solstice enrolls community solar customers through the Solar Massachusetts Renewable Target (SMART) Program in this state. The SMART program does not have a separate program for low-income (LI) electricity customers. SMART instead uses various adders, including the Low-Income Community Shared Solar (LICSS) to incentivize LI-serving projects. It is worth noting that there is a small 5% carveout in each capacity block for “Low Income Community Shared” and “Low-Income Property” projects.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 
-get_tracts <- get_acs(
-  geography="tract", 
-  state="MA",
-  variables=c("Median Income" = "S1901_C01_012E"),
-  year=2019, 
-  geometry=TRUE) %>%
-  mutate(MedInc = estimate) %>%
-  select(geoid=GEOID, geometry)
 
 temp_util <- st_read("utility_zones/MA/pubutil/TOWNS_POLY_V_ELEC.shp") %>%
   mutate(
     new_name = case_when(
       grepl("Municipal", ELEC_LABEL) ~ "Municipal",
-      grepl("NSTAR", ELEC_LABEL) ~ "NSTAR",
+      grepl("NSTAR", ELEC_LABEL) ~ "Eversource",
+      grepl("National Grid", ELEC_LABEL) ~ "National Grid",
+      grepl("UNITIL", ELEC_LABEL) ~ "UNITIL",
       TRUE ~ ELEC_LABEL
     )
   )
 
 ma_ej_blocks <- st_read("data/MA/EJ_POLY.shp")
+
+
+ma_tracts <- get_acs(
+  geography="tract",
+  state="MA",
+  variables=c("Total_Pop" = "B01001_001","snap_hh" = "B22001_002","snap_pop" = "B19058_002",
+              "Total_HH" = "B25002_002"
+
+              ),
+  year=2019,
+  geometry=TRUE) %>%
+  group_by(GEOID) %>%
+  summarize(total_pop = estimate[variable=="Total_Pop"],
+            snap_hh = estimate[variable=="snap_hh"],
+            snap_pop = estimate[variable=="snap_pop"],
+            total_hh = estimate[variable=="Total_HH"]) %>%
+  mutate(geoid=GEOID) %>%
+  select(-GEOID)
+
 
 
 ```
@@ -68,10 +80,20 @@ chas_df <- load_chas() %>%
   filter(State_Name == "Massachusetts")
 
 
+get_tracts <- get_acs(
+  geography="tract", 
+  state="MA",
+  variables=c("Median Income" = "S1901_C01_012E"),
+  year=2019, 
+  geometry=TRUE) %>%
+  mutate(MedInc = estimate) %>%
+  select(geoid=GEOID, geometry)
 
-add_geo <- merge(chas_df, get_tracts) 
-
+add_geo <- merge(chas_df, ma_tracts) 
 add_geo <- st_as_sf(add_geo)
+
+add_geo2 <- merge(chas_df, get_tracts)
+add_geo2 <- st_as_sf(add_geo2)
 
 
 temp_util <- st_transform(temp_util, st_crs(add_geo)) %>%
@@ -84,7 +106,7 @@ temp_util <- temp_util %>%
 ```
 
 
-
+Below are the main electrical utilities in Massachusetts. For this program, Solstice will only work with Eversource, National Grid and Unitil. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -93,10 +115,13 @@ pal5 <- colorFactor(
   domain=temp_util$new_name
 )
 
-leaflet() %>%
+# temp_util <- temp_util %>%
+#   filter(new_name %in% c())
+
+util_map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(data=temp_util,
-              group="Utility Zones",
+              group="Utility",
               stroke=TRUE,
               color=~pal5(temp_util$new_name),
               dashArray="3",
@@ -104,32 +129,115 @@ leaflet() %>%
               popup=paste("Utility Zone: ", temp_util$new_name)) %>%
   addLegend(position="bottomright",
             pal=pal5,
+            group="Utility",
             values=temp_util$new_name,
             title="Solstice MA Utilities")
+
+util_map
 ```
 
 # Geoqualification
 
-The below map shows the qualified Environmental Justice (EJ) 2020 census block groups for Massachusetts. Note, the below represent block groups that are tagged with the presence of an EJ metric, and does not delineate between EJ classifications (Income, Minority, Language, combination of the three). 
+The below map shows the qualified Environmental Justice (EJ) 2020 census block groups for Massachusetts. Note, the below represent block groups that are tagged with the presence of an EJ metric, and does not delineate between EJ classifications (Income, Minority, Language, combination of the three). The EJ population map is viewable in further detail on this [website](https://mass-eoeea.maps.arcgis.com/apps/MapSeries/index.html?appid=535e4419dc0545be980545a0eeaf9b53).
+
+Further [information](https://www.mass.gov/info-details/massgis-data-2020-environmental-justice-populations#attributes-) on MA EJ blocks: 
+
+Polygons in the 2020 Environmental Justice (EJ) Populations layer are 2020 Census block groups across the state that meet one or more of the criteria listed below.
+
+ (i) the annual median household income is not more than 65 percent of the statewide annual median household income; (ii) minorities comprise 40 percent or more of the population; (iii) 25 percent or more of households lack English language proficiency; or (iv) minorities comprise 25 percent or more of the population and the annual median household income of the municipality in which the neighborhood is located does not exceed 150 percent of the statewide annual median household income.
+
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # temp <- ma_ej_blocks %>%
-#   st_transform(st_crs(get_tracts))
+#   st_transform(st_crs(ma_tracts))
 # 
 # 
 # st_write(temp, "/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/MA/MA_2020_EJ_Blocks.geojson", append=FALSE)
 
-mapview(ma_ej_blocks)
+
+
+ma_ej_blocks <- st_transform(ma_ej_blocks, st_crs(temp_util))
+
+util_map %>%
+  addPolygons(data=ma_ej_blocks, 
+              group = "EJ Blocks") %>%
+  
+  addLayersControl(
+    overlayGroups=c( "Utility", "EJ Blocks"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+
 ```
 
-# LMI Qualificaiton
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+
+geo_qual_table <- ma_ej_blocks %>%
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>%
+            select(Utility = new_name)) %>%
+  filter(Utility !="Municipal") %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(
+    `Geo-Qual Population` = sum(TOTAL_POP)
+  )%>%
+   adorn_totals("row") %>%
+  select(-Utility)
+
+
+temp_table <- add_geo %>% 
+  st_point_on_surface() %>%
+  st_make_valid() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  filter(Utility !="Municipal") %>%
+  st_drop_geometry() %>%
+  group_by(Utility) %>%
+  summarize(
+            `80% AMI` = sum(AMI_80),
+            `100% AMI` = sum(AMI_100),
+          #  `100% AMI HHs` = sum(AMI_100),
+           # `Total Under 80%` = sum(AMI_80_inclusive),
+
+            `SNAP HHs` = sum(snap_hh),
+            `State Total HHs` = sum(total_hh),
+            `State Total Pop` = sum(total_pop))%>%
+   adorn_totals("row") 
+
+#temp_table <- cbind(temp_table, geo_qual_table)
+temp_table <- cbind(temp_table[, 1:3], geo_qual_table[, 1], temp_table[, 4:6])
+
+datatable(temp_table, caption = "New Jersey Households by AMI Percentage by Utility") %>%
+
+
+  formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('100% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>% 
+  formatCurrency('SNAP HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('Geo-Qual Population',currency = "", interval = 3, digits = 0, mark = ",")  %>%
+
+  formatCurrency('State Total HHs',currency = "", interval = 3, digits = 0, mark = ",") %>%
+  formatCurrency('State Total Pop',currency = "", interval = 3, digits = 0, mark = ",")
+
+# temp_table %>%
+#   filter(Utility=="Total") %>%
+#   write_csv("final_data/ma_geo_total.csv")
+
+```
+
+
+
+# LIFT Solar
+
+There are 145 community solar projects in New Jersey according to the LIFT solar database. 
 
 
 
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
 ma_tracts <- get_acs(
   geography="tract", 
   state="MA",
@@ -145,22 +253,12 @@ ma_tracts <- get_acs(
 
 
 
-
+add_geo <- add_geo2
 
 
 
 total_ma_tracts <- cbind(add_geo, ma_tracts)
 
-```
-
-
-# LIFT Solar
-
-There are 145 community solar projects in New Jersey according to the LIFT solar database. 
-
-
-
-```{r echo=FALSE, fig.height=10, fig.width=8, message=FALSE, warning=FALSE}
 
 lift_df <- read.csv("data/groundswell_lift/cs-projects-2023-08-18.csv") 
 
@@ -187,8 +285,6 @@ pal_cap <- colorNumeric(
  # reverse=TRUE,
   domain = temp_lift$Project.Capacity.KW.AC)
 
-
-
 pal <- colorNumeric(
   palette = "viridis",
  # reverse=TRUE,
@@ -205,10 +301,6 @@ pal3 <- colorNumeric(
   domain = total_ma_tracts$snap_hh)
 
 library(tidyr)
-
-
-
-
 
 map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
@@ -317,4 +409,11 @@ map %>%
  hideGroup("SNAP") %>% hideGroup("80% AMI") %>% hideGroup("Project Capacity")
 
 ```
+
+
+
+
+
+
+
 

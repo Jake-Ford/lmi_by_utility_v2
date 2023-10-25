@@ -65,6 +65,13 @@ ny_geo <- read_csv("final_data/ny_geo_total.csv")%>%
   select( Population, Percentage)
 
 
+ma_geo <- read_csv("final_data/ma_geo_total.csv") %>%
+  mutate(State = "Massachusetts",
+         Percentage = `Geo-Qual Population`/`State Total Pop`) %>%
+  select(State, `Geo-Qual Population`, Percentage, `80% AMI`, `100% AMI`, SNAP = `SNAP HHs`, `Total Pop` = `State Total Pop`, -Utility)
+
+
+
 temp_geo <- rbind(ca_geo, il_geo_sfa, il_geo_engie, nj_geo, ny_geo)
 
 
@@ -129,6 +136,9 @@ temp_geo <- temp_geo[, c("State", setdiff(names(temp_geo), "State"))]
 
 temp_geo <- temp_geo %>% 
   rename(`Geo-Qual Population` = Population)
+
+temp_geo <- rbind(temp_geo, ma_geo)
+
 
 datatable(temp_geo, caption = "Solstice State Markets Geo- and LMI Populations") %>%
     formatCurrency('80% AMI',currency = "", interval = 3, digits = 0, mark = ",") %>%
