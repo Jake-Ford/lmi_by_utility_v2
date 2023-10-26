@@ -43,8 +43,33 @@ get_tracts <- get_acs(
   mutate(MedInc = estimate) %>%
   select(geoid=GEOID, geometry)
 
+get_zips <- get_acs(
+  geography="zcta", 
+  state="NM",
+  variables=c("Median Income" = "S1901_C01_012E"),
+  year=2017, 
+  geometry=TRUE) %>%
+  mutate(MedInc = estimate) %>%
+  select(geoid=GEOID, geometry)
+
 
 ```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+get_zips <- st_transform(get_zips, st_crs(temp_util))
+
+zip_table <- get_zips %>%
+  st_point_on_surface() %>%
+  st_join(temp_util %>% select(Utility = new_name)) %>%
+  st_drop_geometry()
+
+zip_table
+```
+
+
+
 
 
 
@@ -124,10 +149,22 @@ leaflet() %>%
               dashArray="3",
               fillOpacity=0.5,
               popup=paste("Utility Zone: ", temp_util$new_name)) %>%
+  addPolygons(data=get_zips,
+              group="ZIPs",
+              weight = 1,
+              fillOpacity = 0,
+              color="black",
+              dashArray = "3,3",
+              popup=paste("ZIP Code: ", get_zips$geoid)) %>%
   addLegend(position="bottomright",
             pal=pal5,
             values=temp_util$new_name,
-            title="Solstice NM Utilities")
+            title="Solstice NM Utilities") %>%
+  
+    addLayersControl(
+        overlayGroups=c( "Utility Zones", "ZIPs"))
+
+
 ```
   
 
@@ -642,5 +679,9 @@ datatable(temp, caption = "New Mexico Distance from Public Housing and Selected 
 There are zero community solar projects in New Mexico according to the LIFT solar database. 
 
 
+
+# Parcel Identification
+
+Sources:
 
 
