@@ -264,15 +264,32 @@ get_zips_coverage <- get_zips %>%
   mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
 
 or_zips <- get_zips_coverage %>%
-  filter(coverage >= 0.5)
+  filter(coverage >= 0.05)
 
 or_zips %>%
   st_drop_geometry() %>%
   write.csv("OR_Zips.csv")
 
+pre_screened <- st_transform(pre_screened, st_crs(temp_util)) %>%
+  st_make_valid()
 
+dac_bgs <- st_transform(dac_bgs, st_crs(temp_util)) %>%
+  st_make_valid()
+
+pre_screened_intersects <- st_intersects(or_zips, pre_screened, sparse = FALSE)
+
+or_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+
+dac_bgs_intersects <- st_intersects(or_zips, dac_bgs, sparse = FALSE)
+or_zips$dac <- apply(dac_bgs_intersects, 1, any)
+
+or_zips %>%
+  st_drop_geometry() %>%
+  write.csv("OR_Zips.csv")
 
 ```
+
+
 
 
 
@@ -299,6 +316,8 @@ We consider the following five utility zones in New York:
 
 
 4,145 census block groups are tagged as disadvantaged communities defined by New York State. 
+
+
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -350,7 +369,9 @@ leaflet() %>%
               weight=2,
               dashArray="3",
               fillOpacity=0.1,
-              popup = paste("Name: ", or_zips$GEOID)) %>%
+              popup = paste("Name: ", or_zips$GEOID, "<br>",
+                            "DAC?: ", or_zips$dac, "<br>",
+                            "Pre-Screened: ", or_zips$pre_screened)) %>%
     addPolygons(data=sf_zips,
               group="SF Zips",
               stroke=TRUE,
