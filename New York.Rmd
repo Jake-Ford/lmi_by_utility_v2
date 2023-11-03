@@ -188,8 +188,6 @@ temp_util <- st_transform(temp_util, st_crs(ny_geo)) %>%
 
 
 
-
-
 ny_geo <- add_geo %>%
   filter(State_Name=="New York")
 
@@ -243,38 +241,234 @@ total_ny_tracts <- cbind(ny_geo, ny_tracts)
 
 
 
-#Get any zip code that is at least 50% covered by O&R:
 
-or_zone <- temp_util %>%
-  filter(comp_short =="ORU")
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+process_utility_data <- function(utility_name, temp_util, get_zips, pre_screened, dac_bgs) {
+  temp_zone <- temp_util %>%
+    filter(comp_short == utility_name)
+  
+  # Assuming st_area has been calculated for temp_util in the global environment
+  temp_zone$area <- st_area(temp_zone)
+
+  # Compute intersection summary only if it's not already done
+  if (!"area" %in% names(get_zips)) {
+    get_zips$area <- st_area(get_zips)
+  }
+  
+  intersection_summary <- st_intersection(get_zips, temp_zone) %>%
+    mutate(intersection_area = st_area(geometry)) %>%
+    st_drop_geometry() %>%
+    group_by(GEOID) %>%
+    summarize(intersection_area = sum(intersection_area))
+  
+  get_zips_coverage <- get_zips %>%
+    left_join(intersection_summary, by = "GEOID") %>%
+    mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
+  
+  utility_zips <- get_zips_coverage %>%
+    filter(coverage >= 0.05) # captures zips with 5% of area covered by Utility Zone
+
+  # Transform only if CRS does not match
+  if (!st_crs(pre_screened) == st_crs(temp_util)) {
+    pre_screened <- st_transform(pre_screened, st_crs(temp_util)) %>%
+      st_make_valid()
+  }
+
+  if (!st_crs(dac_bgs) == st_crs(temp_util)) {
+    dac_bgs <- st_transform(dac_bgs, st_crs(temp_util)) %>%
+      st_make_valid()
+  }
+
+  pre_screened_intersects <- st_intersects(utility_zips, pre_screened, sparse = FALSE)
+  utility_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+  
+  dac_bgs_intersects <- st_intersects(utility_zips, dac_bgs, sparse = FALSE)
+  utility_zips$dac <- apply(dac_bgs_intersects, 1, any)
+  
+  utility_zips$Utility <- utility_name
+  
+  # Save to CSV
+  filename <- paste0(utility_name, "_Zips.csv")
+  utility_zips %>%
+    st_drop_geometry() %>%
+    write.csv(filename)
+  
+  return(utility_zips)
+}
+```
+
+
+```{r}
+or_zips <- process_utility_data("ORU", temp_util, get_zips, pre_screened, dac_bgs)
+chge_zips <- process_utility_data("CHGE", temp_util, get_zips, pre_screened, dac_bgs)
+ngrid_zips <- process_utility_data("NGRID", temp_util, get_zips, pre_screened, dac_bgs)
+nyseg_zips <- process_utility_data("NYSEG", temp_util, get_zips, pre_screened, dac_bgs)
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Get any zip code that is at least 50% covered by Utility Zone:
+
+## CHGE
+
+utility_name = "CHGE"
+temp_zone <- temp_util %>%
+  filter(comp_short ==utility_name)
 
 get_zips$area <- st_area(get_zips)
-or_zone$area <- st_area(or_zone)
+temp_zone$area <- st_area(temp_zone)
 
-intersection_summary <- st_intersection(get_zips, or_zone)%>%
+intersection_summary <- st_intersection(get_zips, temp_zone)%>%
   mutate(intersection_area = st_area(geometry)) %>%
   st_drop_geometry() %>%
   group_by(GEOID) %>%
   summarize(intersection_area = sum(intersection_area))
 
+get_zips_coverage <- get_zips %>%
+  left_join(intersection_summary, by = "GEOID") %>%
+  mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
 
+chge_zips <- get_zips_coverage %>%
+  filter(coverage >= 0.05) # captures zips with 5% of area covered by OR Zone
+
+pre_screened <- st_transform(pre_screened, st_crs(temp_zone)) %>%
+  st_make_valid()
+
+
+dac_bgs <- st_transform(dac_bgs, st_crs(temp_zone)) %>%
+  st_make_valid()
+
+pre_screened_intersects <- st_intersects(chge_zips, pre_screened, sparse = FALSE)
+
+chge_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+
+dac_bgs_intersects <- st_intersects(chge_zips, dac_bgs, sparse = FALSE)
+chge_zips$dac <- apply(dac_bgs_intersects, 1, any)
+
+chge_zips$Utility <- utility_name
+
+chge_zips %>%
+  st_drop_geometry() %>%
+  write.csv("CHGE_Zips.csv")
+
+## NGRID
+
+utility_name = "NGRID"
+temp_zone <- temp_util %>%
+  filter(comp_short ==utility_name)
+
+get_zips$area <- st_area(get_zips)
+temp_zone$area <- st_area(temp_zone)
+
+intersection_summary <- st_intersection(get_zips, temp_zone)%>%
+  mutate(intersection_area = st_area(geometry)) %>%
+  st_drop_geometry() %>%
+  group_by(GEOID) %>%
+  summarize(intersection_area = sum(intersection_area))
+
+get_zips_coverage <- get_zips %>%
+  left_join(intersection_summary, by = "GEOID") %>%
+  mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
+
+ngrid_zips <- get_zips_coverage %>%
+  filter(coverage >= 0.05) # captures zips with 5% of area covered by OR Zone
+
+pre_screened <- st_transform(pre_screened, st_crs(temp_zone)) %>%
+  st_make_valid()
+
+dac_bgs <- st_transform(dac_bgs, st_crs(temp_zone)) %>%
+  st_make_valid()
+
+pre_screened_intersects <- st_intersects(ngrid_zips, pre_screened, sparse = FALSE)
+
+ngrid_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+
+dac_bgs_intersects <- st_intersects(ngrid_zips, dac_bgs, sparse = FALSE)
+ngrid_zips$dac <- apply(dac_bgs_intersects, 1, any)
+
+ngrid_zips$Utility <- utility_name
+
+ngrid_zips %>%
+  st_drop_geometry() %>%
+  write.csv("NGRID_Zips.csv")
+
+## NYSEG
+
+utility_name = "NYSEG"
+temp_zone <- temp_util %>%
+  filter(comp_short ==utility_name)
+
+get_zips$area <- st_area(get_zips)
+temp_zone$area <- st_area(temp_zone)
+
+intersection_summary <- st_intersection(get_zips, temp_zone)%>%
+  mutate(intersection_area = st_area(geometry)) %>%
+  st_drop_geometry() %>%
+  group_by(GEOID) %>%
+  summarize(intersection_area = sum(intersection_area))
+
+get_zips_coverage <- get_zips %>%
+  left_join(intersection_summary, by = "GEOID") %>%
+  mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
+
+nyseg_zips <- get_zips_coverage %>%
+  filter(coverage >= 0.05) # captures zips with 5% of area covered by OR Zone
+
+pre_screened <- st_transform(pre_screened, st_crs(temp_zone)) %>%
+  st_make_valid()
+
+dac_bgs <- st_transform(dac_bgs, st_crs(temp_zone)) %>%
+  st_make_valid()
+
+pre_screened_intersects <- st_intersects(nyseg_zips, pre_screened, sparse = FALSE)
+
+nyseg_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+
+dac_bgs_intersects <- st_intersects(nyseg_zips, dac_bgs, sparse = FALSE)
+nyseg_zips$dac <- apply(dac_bgs_intersects, 1, any)
+
+nyseg_zips$Utility <- utility_name
+
+nyseg_zips %>%
+  st_drop_geometry() %>%
+  write.csv("NYSEG_Zips.csv")
+
+## ORU
+
+utility_name = "ORU"
+temp_zone <- temp_util %>%
+  filter(comp_short ==utility_name)
+
+temp_util$area <- st_area(temp_util)
+get_zips$area <- st_area(get_zips)
+temp_zone$area <- st_area(temp_zone)
+
+intersection_summary <- st_intersection(get_zips, temp_util)%>%
+  mutate(intersection_area = st_area(geometry)) %>%
+  st_drop_geometry() %>%
+  group_by(GEOID) %>%
+  summarize(intersection_area = sum(intersection_area))
 
 get_zips_coverage <- get_zips %>%
   left_join(intersection_summary, by = "GEOID") %>%
   mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
 
 or_zips <- get_zips_coverage %>%
-  filter(coverage >= 0.05)
-
-or_zips %>%
-  st_drop_geometry() %>%
-  write.csv("OR_Zips.csv")
+  filter(coverage >= 0.05) # captures zips with 5% of area covered by OR Zone
 
 pre_screened <- st_transform(pre_screened, st_crs(temp_util)) %>%
   st_make_valid()
 
 dac_bgs <- st_transform(dac_bgs, st_crs(temp_util)) %>%
   st_make_valid()
+
 
 pre_screened_intersects <- st_intersects(or_zips, pre_screened, sparse = FALSE)
 
@@ -283,14 +477,55 @@ or_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
 dac_bgs_intersects <- st_intersects(or_zips, dac_bgs, sparse = FALSE)
 or_zips$dac <- apply(dac_bgs_intersects, 1, any)
 
+or_zips$Utility <- utility_name
+
 or_zips %>%
   st_drop_geometry() %>%
   write.csv("OR_Zips.csv")
 
+
+## RGE
+
+utility_name = "RGE"
+temp_zone <- temp_util %>%
+  filter(comp_short ==utility_name)
+
+get_zips$area <- st_area(get_zips)
+temp_zone$area <- st_area(temp_zone)
+
+intersection_summary <- st_intersection(get_zips, temp_zone)%>%
+  mutate(intersection_area = st_area(geometry)) %>%
+  st_drop_geometry() %>%
+  group_by(GEOID) %>%
+  summarize(intersection_area = sum(intersection_area))
+
+get_zips_coverage <- get_zips %>%
+  left_join(intersection_summary, by = "GEOID") %>%
+  mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
+
+rge_zips <- get_zips_coverage %>%
+  filter(coverage >= 0.05) # captures zips with 5% of area covered by OR Zone
+
+pre_screened <- st_transform(pre_screened, st_crs(temp_util)) %>%
+  st_make_valid()
+
+dac_bgs <- st_transform(dac_bgs, st_crs(temp_util)) %>%
+  st_make_valid()
+
+pre_screened_intersects <- st_intersects(rge_zips, pre_screened, sparse = FALSE)
+
+rge_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+
+dac_bgs_intersects <- st_intersects(rge_zips, dac_bgs, sparse = FALSE)
+rge_zips$dac <- apply(dac_bgs_intersects, 1, any)
+
+rge_zips$Utility <- utility_name
+
+rge_zips %>%
+  st_drop_geometry() %>%
+  write.csv("RGE_Zips.csv")
+
 ```
-
-
-
 
 
 
@@ -524,7 +759,12 @@ New York LMI Qualification methods are detailed in the [policy matrix](https://c
   * Award letters for EmPower, HEAP, SNAP, TANF, SSSI; HEAP or other assistance on utility bill
   
   
+# New Work on 11-3
 
+- goals: get zip codes covered by each utility zone - maybe using 5% coverage like we did here in NY
+  - this will be the total zip codes covered by each utility zone we care about 
+  - put it in a table 
+- zip codes in particular UZ we care about - but a 'super' subset of zip codes with geo-lmi qualification zones
 
 
 
@@ -693,6 +933,13 @@ temp_table %>%
   write_csv("final_data/ny_lmi_total.csv")
 
 ```
+
+
+
+
+
+
+
 
 
 # LIFT Solar
