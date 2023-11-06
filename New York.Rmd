@@ -16,6 +16,7 @@ The VDER ISCA opeartes both geo- and income verification methods.
 
 source('helper_functions.R')
 load_packages()
+library(reticulate)
 
 
 ```
@@ -221,32 +222,13 @@ ny_tracts <- get_acs(
             snap_pop = estimate[variable=="snap_pop"])
 
 
-
-
-# ny_bgs <- get_acs(
-#   geography="block group", 
-#   state="NY",
-#   variables=c("Total_Pop" = "B01001_001"),
-#   year=2019, 
-#   geometry=TRUE) 
-# 
-# lmi_data <- read_excel("data/NY/ny-lowmod-blockgroup.xls")
-
-
-
-
 total_ny_tracts <- cbind(ny_geo, ny_tracts)
-
-
-
-
-
 
 
 ```
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 process_utility_data <- function(utility_name, temp_util, get_zips, pre_screened, dac_bgs) {
   temp_zone <- temp_util %>%
@@ -303,11 +285,74 @@ process_utility_data <- function(utility_name, temp_util, get_zips, pre_screened
 ```
 
 
+
+
+
+
+
+
+
+
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-or_zips <- process_utility_data("ORU", temp_util, get_zips, pre_screened, dac_bgs)
-chge_zips <- process_utility_data("CHGE", temp_util, get_zips, pre_screened, dac_bgs)
-ngrid_zips <- process_utility_data("NGRID", temp_util, get_zips, pre_screened, dac_bgs)
-nyseg_zips <- process_utility_data("NYSEG", temp_util, get_zips, pre_screened, dac_bgs)
+oru_zips <- read_csv("data/NY/oru_zips.csv") %>%
+  mutate(
+    Utility = "ORU",
+    zip_flag = case_when(
+      coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    pre_screen_flag = case_when(
+      pre_screened_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    dac_flag = case_when(
+      dac_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE
+    ))
+
+chge_zips <- read_csv("data/NY/chge_zips.csv")%>%
+  mutate(
+    Utility = "CHGE",
+    zip_flag = case_when(
+      coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    pre_screen_flag = case_when(
+      pre_screened_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    dac_flag = case_when(
+      dac_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE
+    ))
+
+ngrid_zips <- read_csv("data/NY/ngrid_zips.csv")%>%
+  mutate(
+    Utility = "NGRID",
+    zip_flag = case_when(
+      coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    pre_screen_flag = case_when(
+      pre_screened_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    dac_flag = case_when(
+      dac_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE
+    ))
+
+nyseg_zips <- read_csv("data/NY/nyseg_zips.csv")%>%
+  mutate(
+    Utility = "NYSEG",
+    zip_flag = case_when(
+      coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    pre_screen_flag = case_when(
+      pre_screened_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE),
+    dac_flag = case_when(
+      dac_coverage >= 0.05 ~ TRUE,
+      TRUE ~ FALSE
+    ))
+
+all_zips <- rbind(oru_zips, chge_zips,ngrid_zips, nyseg_zips) %>%
+  select(ZIP=GEOID, Utility, zip_flag, pre_screen_flag, dac_flag)
 
 ```
 
@@ -382,24 +427,7 @@ leaflet() %>%
               fillOpacity = 0.5,
               popup = paste("Name: ", pre_screened$GEOID, "<br>",
                            "Pop 2018: ", dac_bgs$pop_2018)) %>%
-  addPolygons(data=or_zips,
-              group="Jake Zips",
-              stroke=TRUE,
-              color="red",
-              weight=2,
-              dashArray="3",
-              fillOpacity=0.1,
-              popup = paste("Name: ", or_zips$GEOID, "<br>",
-                            "DAC?: ", or_zips$dac, "<br>",
-                            "Pre-Screened: ", or_zips$pre_screened)) %>%
-    addPolygons(data=sf_zips,
-              group="SF Zips",
-              stroke=TRUE,
-              color="blue",
-              weight=2,
-              dashArray="3",
-              fillOpacity=0.25,
-              popup = paste("Name: ", sf_zips$GEOID)) %>%
+
   
       addPolygons(data = get_zips,
               group="Zips",
@@ -411,7 +439,7 @@ leaflet() %>%
               popup = paste("Name: ", get_zips$GEOID)) %>%
 
   addLayersControl(
-    overlayGroups=c( "Utility Zones", "DAC", "Pre-Screened", "Zips", "Jake Zips", "SF Zips"),  # Update the order for consistency
+    overlayGroups=c( "Utility Zones", "DAC", "Pre-Screened", "Zips"),  # Update the order for consistency
     options = layersControlOptions(collapsed = FALSE)
   )
 
@@ -429,24 +457,24 @@ leaflet() %>%
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
-or_zips <- get_zips %>%
+oru_zips_temp <- get_zips %>%
   st_point_on_surface() %>%
   st_join(temp_util %>% select(Utility = comp_short)) %>%
   st_drop_geometry() %>%
   filter(Utility == "ORU")
 
-or_zips_geoids <- or_zips$geoid_int
+oru_zips_geoids <- oru_zips_temp$geoid_int
 
 temp_zips <- get_zips %>%
   mutate( tag = case_when(
-    geoid_int %in% or_zips_geoids ~ TRUE,
+    geoid_int %in% oru_zips_geoids ~ TRUE,
     TRUE ~ FALSE
   )) %>%
   filter(tag == TRUE)
 
 
 
-write_csv(or_zips, "OR_Zips.csv")
+write_csv(oru_zips_temp, "oru_zips.csv")
 
 dac_bgs <- st_transform(dac_bgs, st_crs(get_zips)) %>% st_make_valid()
 
@@ -535,6 +563,190 @@ datatable(temp, caption = "Pre-Screened Population by Utiliy Zone")%>%
 
 
 
+## Utility Zones and ZIP Codes
+
+The table below shows the zip codes in New York overlain with the utility zone and geoqualificaiton layers. A zip code is tagged as TRUE if at least 5% of the zip code area is covered by the respective layer. Click the CSV button to receive a download of this file. 
+
+- zip_flag = at least 5% of the zip code is covered by the respective utility zone
+- pre_screen_flag = at least 5% of the zip code is covered by the Pre-Screened geoqualificaiton zones mentioned above
+- dac_flag = at least 5% of the zip code is covered by the DAC geoqualificaiton zones mentioned above.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+datatable(
+  all_zips,
+  extensions = 'Buttons', 
+  options = list(
+    dom = 'Bfrtip',
+    buttons = 
+      list(
+        list(
+          extend = 'csv',
+          filename = "All_Zips",
+          title = ''
+        )
+      )
+  )
+)
+```
+
+The below map shows the tagged zip codes by utility zone across the entire state. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+oru_add_geo <- cbind(get_zips, oru_zips)
+chge_add_geo <- cbind(get_zips, chge_zips)
+ngrid_add_geo <- cbind(get_zips, ngrid_zips)
+nyseg_add_geo <- cbind(get_zips, nyseg_zips)
+
+
+
+```
+
+### DAC Map 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dac_palette <- colorFactor(
+  palette = c("grey", "green"),
+  domain = c(FALSE, TRUE)
+)
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = temp_util,
+              group = "Utility Zones",
+              stroke = TRUE,
+              color = ~pal5(temp_util$comp_full),
+              dashArray = "3",
+              fillOpacity = 0.5,
+              popup = paste("Utility Zone: ", temp_util$comp_full)) %>%
+
+
+  addLegend(position = "bottomright",
+            pal = pal5,
+            group = "Utility Zones",
+            values = temp_util$comp_full,
+            title = "Solstice NY Utilities") %>%
+  
+  addPolygons(data = dac_bgs,
+              group="DAC",
+              color="red",
+              fillOpacity = 0.5,
+              popup = paste("Name: ", dac_bgs$geoid, "<br>",
+                           "Pop 2018: ", dac_bgs$pop_2018)) %>%
+
+  addPolygons(data = oru_add_geo,
+              group= "ORU",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(dac_flag),
+
+              ) %>%
+  
+    addPolygons(data = chge_add_geo,
+              group= "CHGE",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(dac_flag),
+
+              ) %>%
+  
+    addPolygons(data = ngrid_add_geo,
+              group= "NGRID",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(dac_flag),
+
+              ) %>%
+  
+    addPolygons(data = nyseg_add_geo,
+              group= "NYSEG",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(dac_flag),
+
+              ) %>%
+
+  addLayersControl(
+    overlayGroups=c( "Utility Zones", "DAC",  "ORU", "CHGE", "NGRID", "NYSEG"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup("ORU") %>% hideGroup("NGRID") %>% hideGroup("NYSEG")
+```
+
+
+### Pre-Screened Map 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dac_palette <- colorFactor(
+  palette = c("grey", "green"),
+  domain = c(FALSE, TRUE)
+)
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = temp_util,
+              group = "Utility Zones",
+              stroke = TRUE,
+              color = ~pal5(temp_util$comp_full),
+              dashArray = "3",
+              fillOpacity = 0.5,
+              popup = paste("Utility Zone: ", temp_util$comp_full)) %>%
+
+
+  addLegend(position = "bottomright",
+            pal = pal5,
+            group = "Utility Zones",
+            values = temp_util$comp_full,
+            title = "Solstice NY Utilities") %>%
+  
+    addPolygons(data = pre_screened,
+              group="Pre-Screened",
+              fill="purple",
+              fillOpacity = 0.5,
+              popup = paste("Name: ", pre_screened$GEOID, "<br>",
+                           "Pop 2018: ", dac_bgs$pop_2018)) %>%
+
+  addPolygons(data = oru_add_geo,
+              group= "ORU",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(pre_screen_flag),
+
+              ) %>%
+  
+    addPolygons(data = chge_add_geo,
+              group= "CHGE",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(pre_screen_flag),
+
+              ) %>%
+  
+    addPolygons(data = ngrid_add_geo,
+              group= "NGRID",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(pre_screen_flag),
+
+              ) %>%
+  
+    addPolygons(data = nyseg_add_geo,
+              group= "NYSEG",
+              stroke = TRUE,
+              weight = 0.5,
+              fillColor = ~dac_palette(pre_screen_flag),
+
+              ) %>%
+
+  addLayersControl(
+    overlayGroups=c( "Utility Zones", "Pre-Screened",  "ORU", "CHGE", "NGRID", "NYSEG"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup("ORU") %>% hideGroup("NGRID") %>% hideGroup("NYSEG")
+```
+
+
 # LMI Qualifications
 
 
@@ -543,15 +755,6 @@ New York LMI Qualification methods are detailed in the [policy matrix](https://c
   * **LMI - 80% of AMI**
   * Award letters for EmPower, HEAP, SNAP, TANF, SSSI; HEAP or other assistance on utility bill
   
-  
-# New Work on 11-3
-
-- goals: get zip codes covered by each utility zone - maybe using 5% coverage like we did here in NY
-  - this will be the total zip codes covered by each utility zone we care about 
-  - put it in a table 
-- zip codes in particular UZ we care about - but a 'super' subset of zip codes with geo-lmi qualification zones
-
-
 
 The table below shows total population by LMI qualification method by utility area coverage. Note, these LMI groups are not mutually exclusive, rather are snap shots of the individual method's population. 
 
