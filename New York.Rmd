@@ -188,6 +188,10 @@ temp_util <- st_transform(temp_util, st_crs(ny_geo)) %>%
 #  * NYSERDA [Supported Solar Projects](https://www.nyserda.ny.gov/All-Programs/NY-Sun/Solar-Data-Maps/NYSERDA-Supported-Solar-Projects)
 
 
+ny_zone_e <- st_read("/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/New York/Zone E Boundary/NY Zone E.shp") 
+
+ny_zone_e <- st_transform(ny_zone_e, st_crs(get_zips)) %>%
+  st_make_valid()
 
 ny_geo <- add_geo %>%
   filter(State_Name=="New York")
@@ -226,6 +230,70 @@ total_ny_tracts <- cbind(ny_geo, ny_tracts)
 
 
 ```
+
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+process_utility_data_zone_e <- function(get_zips, pre_screened, dac_bgs) {
+  
+  temp_zone <- ny_zone_e 
+  
+  # Assuming st_area has been calculated for temp_util in the global environment
+  temp_zone$area <- st_area(temp_zone)
+
+  # Compute intersection summary only if it's not already done
+  if (!"area" %in% names(get_zips)) {
+    get_zips$area <- st_area(get_zips)
+  }
+  
+  intersection_summary <- st_intersection(get_zips, temp_zone) %>%
+    mutate(intersection_area = st_area(geometry)) %>%
+    st_drop_geometry() %>%
+    group_by(GEOID) %>%
+    summarize(intersection_area = sum(intersection_area))
+  
+  get_zips_coverage <- get_zips %>%
+    left_join(intersection_summary, by = "GEOID") %>%
+    mutate(coverage = ifelse(is.na(intersection_area), 0, intersection_area / area))
+  
+  utility_zips <- get_zips_coverage %>%
+    filter(coverage >= 0.05) # captures zips with 5% of area covered by Utility Zone
+
+  # Transform only if CRS does not match
+  if (!st_crs(pre_screened) == st_crs(temp_util)) {
+    pre_screened <- st_transform(pre_screened, st_crs(temp_util)) %>%
+      st_make_valid()
+  }
+
+  if (!st_crs(dac_bgs) == st_crs(temp_util)) {
+    dac_bgs <- st_transform(dac_bgs, st_crs(temp_util)) %>%
+      st_make_valid()
+  }
+
+  pre_screened_intersects <- st_intersects(utility_zips, pre_screened, sparse = FALSE)
+  utility_zips$pre_screened <- apply(pre_screened_intersects, 1, any)
+  
+  dac_bgs_intersects <- st_intersects(utility_zips, dac_bgs, sparse = FALSE)
+  utility_zips$dac <- apply(dac_bgs_intersects, 1, any)
+  
+  utility_zips$Utility <- "ny_zone_e"
+  utility_name <- "ny_zone_e"
+  # Save to CSV
+  filename <- paste0(utility_name, "_Zips.csv")
+  utility_zips %>%
+   # st_drop_geometry() %>%
+    write.csv(filename)
+  
+  return(utility_zips)
+}
+
+
+zone_e_zips <- process_utility_data_zone_e(get_zips,pre_screened, dac_bgs )
+```
+
+
 
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
@@ -295,6 +363,25 @@ process_utility_data <- function(utility_name, temp_util, get_zips, pre_screened
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
+
+# zone_e_zips <- read_csv("data/NY/oru_zips.csv") %>%
+#   mutate(
+#     Utility = "ORU",
+#     zip_flag = case_when(
+#       coverage >= 0.05 ~ TRUE,
+#       TRUE ~ FALSE),
+#     pre_screen_flag = case_when(
+#       pre_screened_coverage >= 0.05 ~ TRUE,
+#       TRUE ~ FALSE),
+#     dac_flag = case_when(
+#       dac_coverage >= 0.05 ~ TRUE,
+#       TRUE ~ FALSE
+#     ))
+# 
+
+
+
+
 oru_zips <- read_csv("data/NY/oru_zips.csv") %>%
   mutate(
     Utility = "ORU",
@@ -633,13 +720,15 @@ leaflet() %>%
               color="red",
               fillOpacity = 0.5,
               popup = paste("Name: ", dac_bgs$geoid, "<br>",
-                           "Pop 2018: ", dac_bgs$pop_2018)) %>%
+                           "Pop 2018: ", dac_bgs$population)) %>%
 
   addPolygons(data = oru_add_geo,
               group= "ORU",
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(dac_flag),
+              popup = paste("ZIP: ", oru_add_geo$GEOID, "<br>",
+                            "Tag: ", oru_add_geo$dac_flag)
 
               ) %>%
   
@@ -648,6 +737,8 @@ leaflet() %>%
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(dac_flag),
+              popup = paste("ZIP: ", chge_add_geo$GEOID, "<br>",
+                            "Tag: ", chge_add_geo$dac_flag)
 
               ) %>%
   
@@ -656,6 +747,8 @@ leaflet() %>%
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(dac_flag),
+              popup = paste("ZIP: ", ngrid_add_geo$GEOID, "<br>",
+                            "Tag: ", ngrid_add_geo$dac_flag)
 
               ) %>%
   
@@ -664,6 +757,8 @@ leaflet() %>%
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(dac_flag),
+              popup = paste("ZIP: ", nyseg_add_geo$GEOID, "<br>",
+                            "Tag: ", nyseg_add_geo$dac_flag)
 
               ) %>%
 
@@ -705,13 +800,16 @@ leaflet() %>%
               fill="purple",
               fillOpacity = 0.5,
               popup = paste("Name: ", pre_screened$GEOID, "<br>",
-                           "Pop 2018: ", dac_bgs$pop_2018)) %>%
+                           "Pop 2018: ", pre_screened$POP_2018)) %>%
 
   addPolygons(data = oru_add_geo,
               group= "ORU",
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(pre_screen_flag),
+              popup = paste("ZIP: ", oru_add_geo$GEOID, "<br>",
+                            "Tag: ", oru_add_geo$pre_screen_flag)
+              
 
               ) %>%
   
@@ -720,6 +818,8 @@ leaflet() %>%
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(pre_screen_flag),
+              popup = paste("ZIP: ", chge_add_geo$GEOID, "<br>",
+                            "Tag: ", chge_add_geo$pre_screen_flag)
 
               ) %>%
   
@@ -728,6 +828,8 @@ leaflet() %>%
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(pre_screen_flag),
+              popup = paste("ZIP: ", ngrid_add_geo$GEOID, "<br>",
+                            "Tag: ", ngrid_add_geo$pre_screen_flag)
 
               ) %>%
   
@@ -736,6 +838,8 @@ leaflet() %>%
               stroke = TRUE,
               weight = 0.5,
               fillColor = ~dac_palette(pre_screen_flag),
+              popup = paste("ZIP: ", nyseg_add_geo$GEOID, "<br>",
+                            "Tag: ", nyseg_add_geo$pre_screen_flag)
 
               ) %>%
 
@@ -744,6 +848,97 @@ leaflet() %>%
     options = layersControlOptions(collapsed = FALSE)
   ) %>%
   hideGroup("ORU") %>% hideGroup("NGRID") %>% hideGroup("NYSEG")
+```
+
+
+## National Grid Zone E
+
+The Rome Taberg solar farm enrolls customers residing in grid zone E of the utility National Grid. The below map is a visualization of the geographic zone within the state. Note the National Grid zone in the above maps are from [source](https://data.ny.gov/Energy-Environment/NYS-Electric-Utility-Service-Territories-Map/q5m9-rahr) and the Zone E file is sourced from this [source](https://www.arcgis.com/apps/mapviewer/index.html?webmap=6fd1de467b134f47a607721f23a69f0c)
+
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+ny_zip_downloaded <- read_csv("data/NY/ny_zip_downloaded.csv") %>%
+  filter(`Load Zone` == "NGRID in Zone E") %>%
+  mutate(GEOID = as.character(ZIP_CODE))
+
+add_geo_downloaded <- merge(ny_zip_downloaded, get_zips)
+
+add_geo_downloaded <- st_as_sf(add_geo_downloaded)
+
+add_geo_downloaded <- st_transform(add_geo_downloaded, st_crs(get_zips)) %>% st_make_valid()
+
+
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+zone_e_zips <- process_utility_data_zone_e(get_zips,pre_screened, dac_bgs )
+
+
+
+
+zone_e_zips <- st_as_sf(zone_e_zips)
+
+zone_e_zips <- st_transform(zone_e_zips, st_crs(get_zips)) %>% st_make_valid()
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = ny_zone_e,
+              group = "NGRID Zone E",
+              stroke = TRUE,
+             # color = ~pal5(temp_util$comp_full),
+              dashArray = "3",
+              fillOpacity = 0.5) %>%
+  
+      addPolygons(data = zone_e_zips,
+              group= "Zips",
+              stroke = TRUE,
+              weight = 0.5,
+              #fillColor = ~dac_palette(dac_flag),
+              popup = paste("ZIP: ", zone_e_zips$GEOID)
+
+              ) %>%
+        # addPolygons(data = add_geo_downloaded,
+        #       group= "Control Zips",
+        #       stroke = TRUE,
+        #       weight = 0.5,
+        #       #fillColor = ~dac_palette(dac_flag),
+        #       popup = paste("ZIP: ", add_geo_downloaded$GEOID)
+        # 
+        #       ) %>%
+
+  addLayersControl(
+    overlayGroups=c( "NGRID Zone E", "Zips"),  # Update the order for consistency
+    options = layersControlOptions(collapsed = FALSE)
+)
+```
+
+The table below gives the zip codes tagged to at least 5% area covered by the NGRID Zone E. In total, 368 zip codes are tagged. 90 of the zip codes are covered by a DAC zone, whereas 6 of the zip codes are within a pre-screened area, as defined above. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+zone_e_zips <- zone_e_zips %>%
+  st_drop_geometry() %>%
+  select(ZIP=GEOID, pre_screened, dac, Utility)
+
+datatable(
+  zone_e_zips,
+  extensions = 'Buttons', 
+  options = list(
+    dom = 'Bfrtip',
+    buttons = 
+      list(
+        list(
+          extend = 'csv',
+          filename = "All_Zips",
+          title = ''
+        )
+      )
+  )
+)
 ```
 
 

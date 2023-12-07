@@ -24,6 +24,7 @@ Solstice enrolls community solar customers through the Solar Massachusetts Renew
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 
+ilsfa <- st_read("/Users/jacobford/Downloads/combined_ilsfa_maps.geojson")
 
 temp_util <- st_read("utility_zones/MA/pubutil/TOWNS_POLY_V_ELEC.shp") %>%
   mutate(
@@ -36,7 +37,35 @@ temp_util <- st_read("utility_zones/MA/pubutil/TOWNS_POLY_V_ELEC.shp") %>%
     )
   )
 
-ma_ej_blocks <- st_read("data/MA/EJ_POLY.shp")
+four_cat_words <- c("Income", "Minority and income", "Income and English isolation", "Minority, income and English isolation")
+
+ma_ej_blocks <- st_read("data/MA/EJ_POLY.shp") %>%
+  filter(EJ_CRIT_DE %in% four_cat_words) 
+
+
+
+
+
+temp_ej_blocks <- ma_ej_blocks %>%
+  st_drop_geometry()
+
+ma_blocks <- get_acs(
+  geography="block group",
+  state="MA",
+  variables=c("Total_Pop" = "B01001_001"),
+  year=2020,
+  geometry=TRUE) %>%
+  group_by(GEOID) %>%
+  summarize(total_pop = estimate[variable=="Total_Pop"]) 
+
+
+
+
+
+temp_ej_blocks <- ma_ej_blocks %>%
+  st_transform(st_crs(ma_blocks))
+
+st_crs(temp_ej_blocks)
 
 
 ma_tracts <- get_acs(
@@ -59,6 +88,7 @@ ma_tracts <- get_acs(
 
 
 ```
+
 
 
 
@@ -149,11 +179,11 @@ Polygons in the 2020 Environmental Justice (EJ) Populations layer are 2020 Censu
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# temp <- ma_ej_blocks %>%
-#   st_transform(st_crs(ma_tracts))
-# 
-# 
-# st_write(temp, "/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/MA/MA_2020_EJ_Blocks.geojson", append=FALSE)
+temp <- ma_ej_blocks %>%
+  st_transform(st_crs(ma_tracts))
+
+
+st_write(temp, "/Users/jacobford/Library/CloudStorage/GoogleDrive-jake@solstice.us/Shared drives/Product | Jake/Geocoding/MA/MA_2020_EJ_Blocks_corrected.geojson", append=FALSE)
 
 
 

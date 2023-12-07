@@ -5,3 +5,9 @@
 .Ruserdata/
 Illinois_Madison_Olive.Rmd
 final_data/
+*.csv
+*.shp
+*.dbf
+*.geojson
+*.shx
+*.prj
